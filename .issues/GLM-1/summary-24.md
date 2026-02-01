@@ -2,12 +2,17 @@
 
 **Date:** 2026-01-31
 
+**Prompt/Ask:** Not recorded (predates template).
+
 ## Completed
 - Added a throttling helper and wired it into the GitLab sync scaffold.
 - Exposed throttling settings via environment variables and documented them.
 
 ## Current Status
 - GitLab sync has a reusable throttling pattern for API calls.
+
+## Plan Coverage
+- Not recorded (predates template).
 
 ## Files Changed
 - `src/lib/throttle.ts` - throttling helper.

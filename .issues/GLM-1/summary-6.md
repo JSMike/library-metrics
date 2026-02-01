@@ -2,12 +2,17 @@
 
 **Date:** 2026-01-31
 
+**Prompt/Ask:** Not recorded (predates template).
+
 ## Completed
 - Expanded GLM-1 issue context and requirements based on detailed data needs.
 - Updated the GLM-1 plan to include dependency/version resolution and usage query modeling.
 
 ## Current Status
 - GLM-1 now captures the data model requirements for GitLab dependency and usage reporting.
+
+## Plan Coverage
+- Not recorded (predates template).
 
 ## Files Changed
 - `.issues/GLM-1/issue.md` - added context and requirements.

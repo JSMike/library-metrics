@@ -33,6 +33,16 @@ This document defines the issue tracking and workflow requirements for AI agents
 - Any modifications to issue files
 - If your tool supports issue commands, use `/issue session <id>` to create the next `summary-N.md`.
 
+#### Micro-change Exception (Docs/Admin Only)
+You may append an **Addendum** to the most recent summary instead of creating a new summary *only* when **all** of the following are true:
+- Exactly **one file** changed and **≤ 20 lines** total.
+- **No behavior change** (docs/comments/wording/formatting only).
+- **No new deps**, **no schema changes**, **no migrations**, **no script/flag changes**.
+- **No user-facing output changes** (including logs).
+- The change is made **in the same session** and the prior summary has not been used for handoff.
+
+If any condition is not met, create a new `summary-N.md`.
+
 ### 5. Submitting for Review
 - **Do not mark issues `done` yourself.** When implementation is complete, set status to `review`.
 - Create a session summary documenting what was implemented and how to verify it.
@@ -64,6 +74,8 @@ This document defines the issue tracking and workflow requirements for AI agents
 
 **Date:** YYYY-MM-DD
 
+**Prompt/Ask:** Briefly state the user request that triggered this work.
+
 ## Completed
 - What was accomplished
 - Commits made
@@ -71,6 +83,9 @@ This document defines the issue tracking and workflow requirements for AI agents
 ## Current Status
 - Where the issue stands
 - Blockers or concerns
+
+## Plan Coverage
+- Plan items addressed in this session (if applicable).
 
 ## Files Changed
 - `path/to/file` - description

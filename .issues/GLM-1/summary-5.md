@@ -2,6 +2,8 @@
 
 **Date:** 2026-01-31
 
+**Prompt/Ask:** Not recorded (predates template).
+
 ## Completed
 - Copied `.claude/` and `.github/` AI instruction assets into `gitlab-metrics`.
 - Updated Codex/Claude command docs in the new repo to use the GLM prefix.
@@ -9,6 +11,9 @@
 
 ## Current Status
 - `gitlab-metrics` now has multi-agent instruction coverage with GLM-prefixed issue docs.
+
+## Plan Coverage
+- Not recorded (predates template).
 
 ## Files Changed
 - `.claude/commands/issue.md` - updated to GLM prefix.

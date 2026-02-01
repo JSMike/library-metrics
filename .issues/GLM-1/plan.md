@@ -20,6 +20,11 @@ Provide up-to-date guidance on TanStack/Bun/tRPC stack, database choice, repo st
 - Verify Bun create scaffolding command and Bun SQLite capabilities.
 - Check tRPC adapters suitable for Bun/Fetch.
 
+Notes:
+- TanStack Start + Bun docs recommend running Vite with `bun --bun` and call out React 19+ for Bun hosting guidance.
+- Nitro supports a Bun preset for Bun-targeted deployments.
+- TanStack DB is in beta; TanStack Store is in alpha; TanStack Table remains headless and framework-agnostic.
+
 ### 2. Propose stack and structure
 
 - Recommend the TanStack libraries to pair with tRPC for a reporting dashboard.
@@ -42,6 +47,7 @@ Provide up-to-date guidance on TanStack/Bun/tRPC stack, database choice, repo st
 - Plan for report-time exclusion filters (by project ID/path) to omit maintainer/owner projects, including multiple related projects, from adoption metrics.
 - Include filters for archived projects and downstream status flags (active/in-production), with status flags stored in JSON metadata for now.
 - Define a throttling/rate-limit strategy for GitLab and downstream API calls.
+- Add reporting helpers for latest sync metadata and aggregated dependency/usage summaries.
 
 ### 4. Migration plan
 

@@ -2,12 +2,17 @@
 
 **Date:** 2026-01-31
 
+**Prompt/Ask:** Not recorded (predates template).
+
 ## Completed
 - Renamed issue folder from `BOX-52` to `GLM-1`.
 - Updated project docs and issue records to use the GLM prefix.
 
 ## Current Status
 - Issue tracking now uses GLM-* keys for gitlab-metrics.
+
+## Plan Coverage
+- Not recorded (predates template).
 
 ## Files Changed
 - `.issues/GLM-1/issue.md` - updated issue ID prefix.

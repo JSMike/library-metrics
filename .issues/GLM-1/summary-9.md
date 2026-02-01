@@ -2,11 +2,16 @@
 
 **Date:** 2026-01-31
 
+**Prompt/Ask:** Not recorded (predates template).
+
 ## Completed
 - Locked in a run-scoped schema proposal with snapshot tables and resolved dependency view.
 
 ## Current Status
 - GLM-1 now includes a concrete v1 schema aligned to historical reporting requirements.
+
+## Plan Coverage
+- Not recorded (predates template).
 
 ## Files Changed
 - `.issues/GLM-1/issue.md` - added v1 schema proposal.

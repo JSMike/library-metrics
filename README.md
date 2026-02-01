@@ -9,6 +9,38 @@ bun install
 bun --bun run dev
 ```
 
+## GitLab Sync
+
+Run the sync job to populate the SQLite database:
+
+```bash
+bun --bun run sync:gitlab
+```
+
+To force a re-sync even when the latest commit SHA has not changed (useful after schema changes):
+
+```bash
+bun --bun run sync:gitlab -- --force
+```
+
+Tune GitLab request throttling and timeouts via `.env` (see `.env.example`).
+
+### Sync Debugging
+
+Enable debug logs and scan progress:
+
+```bash
+SYNC_DEBUG=1 bun --bun run sync:gitlab -- --force
+```
+
+Increase scan progress logging frequency (every 10 files):
+
+```bash
+SYNC_VERBOSE=1 bun --bun run sync:gitlab -- --force
+# or
+bun --bun run sync:gitlab -- --force --verbose
+```
+
 # Building For Production
 
 To build this application for production:
@@ -37,8 +69,16 @@ sudo apt-get update && sudo apt-get install -y pipx
 pipx ensurepath
 pipx install datasette
 
-# macOS (Homebrew)
-brew install datasette
+# macOS (Homebrew + pipx)
+brew install pipx
+pipx ensurepath
+pipx install datasette
+```
+
+Make sure pipx binaries are on your PATH (needed for `datasette`):
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
 Run the viewer:

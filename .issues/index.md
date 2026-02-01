@@ -1,6 +1,6 @@
 # Issue Index
 
-Generated: 2026-01-31
+Generated: 2026-02-01
 
 ## By Status
 
@@ -18,7 +18,7 @@ Generated: 2026-01-31
 
 | ID | Title | Complexity | Priority | Blocked By |
 | --- | --- | --- | --- | --- |
-| [GLM-1](./GLM-1/issue.md) | Plan gitlab-metrics app structure and stack choices | low/medium | medium | - |
+| [GLM-2](./GLM-2/issue.md) | Enhance dependency browsing and detail pages | medium | medium | |
 
 ### Review
 
@@ -29,3 +29,4 @@ Generated: 2026-01-31
 
 | ID | Title | Completed |
 | --- | --- | --- |
+| [GLM-1](./GLM-1/issue.md) | Plan gitlab-metrics app structure and stack choices | 2026-01-31 |

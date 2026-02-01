@@ -7,6 +7,7 @@ export type GitLabConfig = {
   apiVersion: string;
   concurrency: number;
   delayMs: number;
+  timeoutMs: number;
 };
 
 export type GitLabGroupResponse = {
@@ -35,6 +36,20 @@ export type GitLabCommitResponse = {
 
 const DEFAULT_API_VERSION = "v4";
 
+const getEnv = (key: string, fallback: string) => {
+  const value = process.env[key];
+  return value && value.trim().length > 0 ? value : fallback;
+};
+
+const getNumberEnv = (key: string, fallback: number) => {
+  const value = process.env[key];
+  if (!value || value.trim().length === 0) {
+    return fallback;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
 const requireEnv = (key: string): string => {
   const value = process.env[key];
   if (!value) {
@@ -45,12 +60,13 @@ const requireEnv = (key: string): string => {
 
 export const getGitLabConfig = (): GitLabConfig => {
   return {
-    baseUrl: process.env.GITLAB_BASE_URL ?? "https://gitlab.com",
+    baseUrl: getEnv("GITLAB_BASE_URL", "https://gitlab.com"),
     token: requireEnv("GITLAB_TOKEN"),
     groupPath: requireEnv("GITLAB_GROUP_PATH"),
-    apiVersion: process.env.GITLAB_API_VERSION ?? DEFAULT_API_VERSION,
-    concurrency: Number(process.env.GITLAB_REQUEST_CONCURRENCY ?? 3),
-    delayMs: Number(process.env.GITLAB_REQUEST_DELAY_MS ?? 250),
+    apiVersion: getEnv("GITLAB_API_VERSION", DEFAULT_API_VERSION),
+    concurrency: getNumberEnv("GITLAB_REQUEST_CONCURRENCY", 3),
+    delayMs: getNumberEnv("GITLAB_REQUEST_DELAY_MS", 250),
+    timeoutMs: getNumberEnv("GITLAB_REQUEST_TIMEOUT_MS", 30000),
   };
 };
 
@@ -69,7 +85,17 @@ export const apiFetch = (
     headers.set("Authorization", `Bearer ${config.token}`);
     headers.set("Accept", "application/json");
 
-    return fetch(url, { ...init, headers });
+    if (init?.signal || config.timeoutMs <= 0) {
+      return fetch(url, { ...init, headers });
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), config.timeoutMs);
+    try {
+      return await fetch(url, { ...init, headers, signal: controller.signal });
+    } finally {
+      clearTimeout(timeoutId);
+    }
   });
 };
 

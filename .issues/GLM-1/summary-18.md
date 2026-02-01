@@ -2,12 +2,17 @@
 
 **Date:** 2026-01-31
 
+**Prompt/Ask:** Not recorded (predates template).
+
 ## Completed
 - Installed Drizzle-related dependencies in the gitlab-metrics repo.
 - Generated initial Drizzle migration for the schema.
 
 ## Current Status
 - Initial migration exists under `drizzle/` and is ready to apply.
+
+## Plan Coverage
+- Not recorded (predates template).
 
 ## Files Changed
 - `bun.lock` - updated by bun install.

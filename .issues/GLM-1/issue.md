@@ -3,7 +3,7 @@
 <!-- Metadata -->
 | Field        | Value        |
 |--------------|--------------|
-| Status       | backlog      |
+| Status       | done         |
 | Owner        | Codex        |
 | Complexity   | low/medium   |
 | Created      | 2026-01-31   |
@@ -49,6 +49,7 @@ The intended audience is small (dozens of users), so infrastructure should remai
 - Reports should support additional filters such as archived status and downstream system flags (e.g., active/in-production).
 - Downstream status flags should live in JSON metadata for now (stored in `project_snapshot.metadata_json`) until a dedicated model is needed.
 - GitLab and downstream API calls must follow a throttling/rate-limit pattern to avoid exceeding limits.
+- Reporting helpers should expose latest sync metadata and aggregated dependency/usage summaries for the dashboard.
 
 ## Proposed Schema (v1)
 

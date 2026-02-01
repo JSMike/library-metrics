@@ -2,12 +2,17 @@
 
 **Date:** 2026-01-31
 
+**Prompt/Ask:** Not recorded (predates template).
+
 ## Completed
 - Added GitLab sync job scaffold with sync_run tracking and env-based config.
 - Added GitLab env vars to `.env.example` and a `sync:gitlab` script.
 
 ## Current Status
 - ETL scaffold exists; GitLab API logic remains to be implemented.
+
+## Plan Coverage
+- Not recorded (predates template).
 
 ## Files Changed
 - `src/jobs/sync-gitlab.ts` - initial sync job scaffold.

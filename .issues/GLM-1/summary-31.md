@@ -2,12 +2,17 @@
 
 **Date:** 2026-01-31
 
+**Prompt/Ask:** Not recorded (predates template).
+
 ## Completed
 - Expanded lockfile detection to include bun/yarn/pnpm formats and stored their contents.
 - Clarified dependency extraction is inclusive of dependencies/devDependencies/peerDependencies/optionalDependencies.
 
 ## Current Status
 - Sync captures additional lockfiles, but resolved versions are currently only derived from package-lock.json.
+
+## Plan Coverage
+- Not recorded (predates template).
 
 ## Files Changed
 - `src/db/schema.ts` - expanded file kind list for lockfiles.

@@ -2,11 +2,16 @@
 
 **Date:** 2026-01-31
 
+**Prompt/Ask:** Not recorded (predates template).
+
 ## Completed
 - Added Datasette-based SQLite viewer script and documentation.
 
 ## Current Status
 - `db:view` now runs a local Datasette UI for the SQLite database.
+
+## Plan Coverage
+- Not recorded (predates template).
 
 ## Files Changed
 - `package.json` - added `db:view` script.

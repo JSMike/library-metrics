@@ -2,6 +2,8 @@
 
 **Date:** 2026-01-31
 
+**Prompt/Ask:** Not recorded (predates template).
+
 ## Completed
 - Implemented lockfile parsing for yarn/pnpm and resolved versions without storing lockfile contents.
 - Added fallback to stripped package.json specs when no lockfile exists.
@@ -9,6 +11,9 @@
 
 ## Current Status
 - Direct dependency resolution now uses package-lock, yarn.lock, pnpm-lock.yaml (bun.lock best-effort via JSON).
+
+## Plan Coverage
+- Not recorded (predates template).
 
 ## Files Changed
 - `src/jobs/sync-gitlab.ts` - lockfile parsing and fallback resolution logic.

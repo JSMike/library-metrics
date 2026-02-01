@@ -2,12 +2,17 @@
 
 **Date:** 2026-01-31
 
+**Prompt/Ask:** Not recorded (predates template).
+
 ## Completed
 - Added change-detection requirement to skip unchanged projects and reuse prior run data.
 - Noted optional project_snapshot fields to capture data-source run metadata.
 
 ## Current Status
 - GLM-1 now specifies commit-based short-circuiting for per-project syncs.
+
+## Plan Coverage
+- Not recorded (predates template).
 
 ## Files Changed
 - `.issues/GLM-1/issue.md` - added change-detection requirement and schema note.

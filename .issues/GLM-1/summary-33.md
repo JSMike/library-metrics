@@ -2,6 +2,8 @@
 
 **Date:** 2026-01-31
 
+**Prompt/Ask:** Not recorded (predates template).
+
 ## Completed
 - Updated lockfile selection to choose the most recently modified candidate when multiple exist.
 - Added fallback to stripped package.json specs when no lockfile is present.
@@ -9,6 +11,9 @@
 
 ## Current Status
 - Sync resolves direct dependency versions from the newest available lockfile, else uses stripped package.json versions.
+
+## Plan Coverage
+- Not recorded (predates template).
 
 ## Files Changed
 - `src/jobs/sync-gitlab.ts` - added lockfile commit-date selection and fallback logic.

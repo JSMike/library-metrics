@@ -2,11 +2,16 @@
 
 **Date:** 2026-01-31
 
+**Prompt/Ask:** Not recorded (predates template).
+
 ## Completed
 - Updated Datasette install instructions to use python3.
 
 ## Current Status
 - Docs now match environments where only python3 is available.
+
+## Plan Coverage
+- Not recorded (predates template).
 
 ## Files Changed
 - `AI-README.md` - switched install command to python3.

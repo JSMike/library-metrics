@@ -6,7 +6,7 @@ Guidance for GitHub Copilot in this repository.
 
 **Read these files before starting work:**
 - `../AI-WORKFLOW.md` - Workflow and issue tracking (mandatory)
-- `../AI-README.md` - Project conventions and Nx guidelines
+- `../AI-README.md` - Project conventions
 
 ## Copilot Specific
 

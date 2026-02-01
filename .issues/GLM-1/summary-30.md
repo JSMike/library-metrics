@@ -2,12 +2,17 @@
 
 **Date:** 2026-01-31
 
+**Prompt/Ask:** Not recorded (predates template).
+
 ## Completed
 - Implemented package.json/package-lock.json discovery and extraction in the GitLab sync job.
 - Added dependency snapshot extraction and lockfile resolved version capture for direct dependencies.
 
 ## Current Status
 - Sync now populates file snapshots, package snapshots, and dependency snapshots for changed projects.
+
+## Plan Coverage
+- Not recorded (predates template).
 
 ## Files Changed
 - `src/jobs/sync-gitlab.ts` - repository tree scan, file fetch, package/lockfile parsing, dependency snapshot insertion.

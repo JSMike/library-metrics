@@ -2,12 +2,17 @@
 
 **Date:** 2026-01-31
 
+**Prompt/Ask:** Not recorded (predates template).
+
 ## Completed
 - Added Drizzle schema, DB client, and config for SQLite storage.
 - Added data directory placeholder and documented DB file usage in AI-README.
 
 ## Current Status
 - Schema is implemented in code; migrations can be generated with drizzle-kit.
+
+## Plan Coverage
+- Not recorded (predates template).
 
 ## Files Changed
 - `drizzle.config.ts` - Drizzle configuration for SQLite.

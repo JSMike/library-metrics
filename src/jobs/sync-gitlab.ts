@@ -14,6 +14,7 @@ import {
   projectFileSnapshot,
   projectSnapshot,
   syncRun,
+  usageResult,
 } from "../db/schema";
 import {
   fetchAllPages,
@@ -24,6 +25,7 @@ import {
   type GitLabProjectResponse,
 } from "../lib/gitlab";
 import { Throttler } from "../lib/throttle";
+import { usageQueries } from "../lib/usage-queries";
 
 type SyncRunStatus = "started" | "completed" | "failed" | "partial";
 
@@ -386,6 +388,38 @@ const stripVersionSpec = (versionSpec: string) => {
   return match ? match[0] : cleaned || null;
 };
 
+const toRegex = (query: (typeof usageQueries)[number]) => {
+  const flags = query.flags
+    ? query.flags.includes("g")
+      ? query.flags
+      : `${query.flags}g`
+    : "g";
+  return new RegExp(query.regex, flags);
+};
+
+const countMatches = (regex: RegExp, text: string) => {
+  let count = 0;
+  regex.lastIndex = 0;
+  let match = regex.exec(text);
+  while (match) {
+    count += 1;
+    if (match[0] === "") {
+      regex.lastIndex += 1;
+    }
+    match = regex.exec(text);
+  }
+  return count;
+};
+
+const getExtension = (path: string) => {
+  const lower = path.toLowerCase();
+  const idx = lower.lastIndexOf(".");
+  if (idx === -1) {
+    return "";
+  }
+  return lower.slice(idx);
+};
+
 const ensureGroup = async (groupInfo: GitLabGroupResponse) => {
   const existing = await db
     .select()
@@ -638,6 +672,39 @@ const updateSyncRun = async (runId: number, status: SyncRunStatus) => {
 };
 
 const runSync = async () => {
+  const runStartedAt = Date.now();
+  const forceResync =
+    process.argv.includes("--force") || process.env.SYNC_FORCE === "1";
+  const verboseEnabled =
+    process.argv.includes("--verbose") || process.env.SYNC_VERBOSE === "1";
+  const debugEnabled = process.env.SYNC_DEBUG === "1" || verboseEnabled;
+  const scanLogInterval = verboseEnabled ? 10 : 100;
+  const timestamp = () =>
+    new Date().toLocaleTimeString(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    });
+  const logInfo = (message: string, ...args: unknown[]) => {
+    console.log(`[${timestamp()}] ${message}`, ...args);
+  };
+  const logWarn = (message: string, ...args: unknown[]) => {
+    console.warn(`[${timestamp()}] ${message}`, ...args);
+  };
+  const logError = (message: string, ...args: unknown[]) => {
+    console.error(`[${timestamp()}] ${message}`, ...args);
+  };
+  const debug = (...args: string[]) => {
+    if (debugEnabled) {
+      logInfo(...args);
+    }
+  };
+  const forceLabel = forceResync ? " (force)" : "";
+  const startDate = new Date(runStartedAt);
+  logInfo(
+    `[sync] start${forceLabel} ${startDate.toLocaleDateString()} UTC ${startDate.toISOString()}`,
+  );
   const config = getGitLabConfig();
   const throttler = new Throttler({
     concurrency: config.concurrency,
@@ -661,9 +728,21 @@ const runSync = async () => {
       throttler,
       `/groups/${groupInfo.id}/projects?include_subgroups=true`,
     );
+    const totalProjects = projects.length;
+    logInfo(
+      `[sync] connected to GitLab group "${groupInfo.full_path}" (${groupInfo.id}) - ${totalProjects} projects`,
+    );
 
-    for (const projectInfo of projects) {
+    let completedProjects = 0;
+
+    for (const [index, projectInfo] of projects.entries()) {
+      const projectLabel = projectInfo.path_with_namespace;
+      logInfo(
+        `[sync] (${index + 1}/${totalProjects}) syncing ${projectLabel}`,
+      );
+      let projectStatus = "ok";
       try {
+        const projectStartedAt = Date.now();
         const projectId = await ensureProject(
           groupRow.id,
           projectInfo,
@@ -683,12 +762,16 @@ const runSync = async () => {
             ? new Date(latestCommit.created_at)
             : null;
 
-        const isUnchanged =
+        const isSameCommit =
           previousSnapshot &&
           latestCommitSha &&
           previousSnapshot.latestCommitSha === latestCommitSha;
 
-        const dataSourceSyncId = isUnchanged
+        const shouldSkip = Boolean(isSameCommit) && !forceResync;
+        if (shouldSkip) {
+          projectStatus = "skipped";
+        }
+        const dataSourceSyncId = shouldSkip
           ? previousSnapshot.dataSourceSyncId ?? previousSnapshot.syncId
           : runId;
 
@@ -706,19 +789,24 @@ const runSync = async () => {
           latestCommitSha,
           latestCommitAt,
           dataSourceSyncId,
-          isUnchanged: Boolean(isUnchanged),
+          isUnchanged: Boolean(isSameCommit),
           checkedAt: new Date(),
         });
 
-        if (isUnchanged) {
+        if (shouldSkip) {
           continue;
         }
 
+        const treeStart = Date.now();
+        debug(`[sync] ${projectLabel} fetching repository tree`);
         const treeEntries = await fetchRepositoryTree(
           config,
           throttler,
           projectInfo.id,
           projectInfo.default_branch,
+        );
+        debug(
+          `[sync] ${projectLabel} repository tree fetched (${treeEntries.length} entries, ${((Date.now() - treeStart) / 1000).toFixed(1)}s)`,
         );
 
         const packageJsonPaths = treeEntries
@@ -727,6 +815,9 @@ const runSync = async () => {
               entry.type === "blob" && entry.path.endsWith("package.json"),
           )
           .map((entry) => entry.path);
+        debug(
+          `[sync] ${projectLabel} package.json files: ${packageJsonPaths.length}`,
+        );
 
         const lockfilePaths = new Set(
           treeEntries
@@ -737,9 +828,36 @@ const runSync = async () => {
             )
             .map((entry) => entry.path),
         );
+        debug(
+          `[sync] ${projectLabel} lockfiles: ${lockfilePaths.size}`,
+        );
 
         const lockfileCache = new Map<string, ParsedLockfile>();
         const lockfileCommitCache = new Map<string, Date | null>();
+
+        const queryList = usageQueries;
+        const queriesByExtension = new Map<string, typeof usageQueries>();
+        const queryMatchers = new Map<string, RegExp>();
+
+        for (const query of queryList) {
+          queryMatchers.set(query.queryKey, toRegex(query));
+          for (const extension of query.extensions) {
+            const ext = extension.toLowerCase();
+            const list = queriesByExtension.get(ext) ?? [];
+            list.push(query);
+            queriesByExtension.set(ext, list);
+          }
+        }
+
+        const usageCounts = new Map<
+          string,
+          {
+            queryKey: string;
+            targetKey: string;
+            subTargetKey: string;
+            count: number;
+          }
+        >();
 
         const getLockfile = async (path: string) => {
           const cached = lockfileCache.get(path);
@@ -775,6 +893,7 @@ const runSync = async () => {
         };
 
         for (const packagePath of packageJsonPaths) {
+          debug(`[sync] ${projectLabel} loading ${packagePath}`);
           const pkgFile = await fetchFile(
             config,
             throttler,
@@ -856,18 +975,102 @@ const runSync = async () => {
             }
           }
         }
+
+        if (queriesByExtension.size > 0) {
+          const candidateFiles = treeEntries
+            .filter((entry) => entry.type === "blob")
+            .map((entry) => entry.path)
+            .filter((path) => queriesByExtension.has(getExtension(path)));
+          debug(
+            `[sync] ${projectLabel} usage scan candidates: ${candidateFiles.length}`,
+          );
+
+          let scannedFiles = 0;
+          for (const filePath of candidateFiles) {
+            const extension = getExtension(filePath);
+            const queries = queriesByExtension.get(extension);
+            if (!queries || queries.length === 0) {
+              continue;
+            }
+
+            const file = await fetchFile(
+              config,
+              throttler,
+              projectInfo.id,
+              projectInfo.default_branch,
+              filePath,
+            );
+            scannedFiles += 1;
+            if (debugEnabled && scannedFiles % scanLogInterval === 0) {
+              debug(
+                `[sync] ${projectLabel} scanned ${scannedFiles}/${candidateFiles.length} files`,
+              );
+            }
+            if (!file.raw) {
+              continue;
+            }
+
+            for (const query of queries) {
+              const regex = queryMatchers.get(query.queryKey);
+              if (!regex) {
+                continue;
+              }
+              const matchCount = countMatches(regex, file.raw);
+              if (!matchCount) {
+                continue;
+              }
+              const existing = usageCounts.get(query.queryKey);
+              if (existing) {
+                existing.count += matchCount;
+              } else {
+                usageCounts.set(query.queryKey, {
+                  queryKey: query.queryKey,
+                  targetKey: query.targetKey,
+                  subTargetKey: query.subTargetKey,
+                  count: matchCount,
+                });
+              }
+            }
+          }
+
+          for (const usage of usageCounts.values()) {
+            await db.insert(usageResult).values({
+              projectId,
+              syncId: runId,
+              targetKey: usage.targetKey,
+              subTargetKey: usage.subTargetKey,
+              queryKey: usage.queryKey,
+              matchCount: usage.count,
+              scannedAt: new Date(),
+            });
+          }
+        }
+        debug(
+          `[sync] ${projectLabel} sync complete in ${((Date.now() - projectStartedAt) / 1000).toFixed(1)}s`,
+        );
       } catch (error) {
         hadErrors = true;
-        console.warn(
+        projectStatus = "failed";
+        logWarn(
           `Project sync failed for ${projectInfo.path_with_namespace}:`,
           error,
+        );
+      } finally {
+        completedProjects += 1;
+        logInfo(
+          `[sync] (${completedProjects}/${totalProjects}) ${projectStatus}: ${projectLabel}`,
         );
       }
     }
 
-    await updateSyncRun(runId, hadErrors ? "partial" : "completed");
+    const runStatus = hadErrors ? "partial" : "completed";
+    await updateSyncRun(runId, runStatus);
+    const elapsedSeconds = ((Date.now() - runStartedAt) / 1000).toFixed(1);
+    logInfo(`[sync] finished (${runStatus}) in ${elapsedSeconds}s`);
   } catch (error) {
     await updateSyncRun(runId, "failed");
+    const elapsedSeconds = ((Date.now() - runStartedAt) / 1000).toFixed(1);
+    logError(`[sync] failed after ${elapsedSeconds}s`);
     throw error;
   } finally {
     sqlite.close();
@@ -875,6 +1078,14 @@ const runSync = async () => {
 };
 
 runSync().catch((error) => {
-  console.error("GitLab sync failed:", error);
+  console.error(
+    `[${new Date().toLocaleTimeString(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    })}] GitLab sync failed:`,
+    error,
+  );
   process.exitCode = 1;
 });

@@ -2,11 +2,16 @@
 
 **Date:** 2026-01-31
 
+**Prompt/Ask:** Not recorded (predates template).
+
 ## Completed
 - Added requirement for throttling/rate-limit handling for GitLab and downstream API calls.
 
 ## Current Status
 - GLM-1 now specifies rate-limit protection needs.
+
+## Plan Coverage
+- Not recorded (predates template).
 
 ## Files Changed
 - `.issues/GLM-1/issue.md` - added throttling requirement.

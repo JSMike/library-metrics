@@ -2,11 +2,16 @@
 
 **Date:** 2026-01-31
 
+**Prompt/Ask:** Not recorded (predates template).
+
 ## Completed
 - Added historical snapshot requirements for sync runs and run-based data association.
 
 ## Current Status
 - GLM-1 now specifies run-scoped datasets with historical reporting support.
+
+## Plan Coverage
+- Not recorded (predates template).
 
 ## Files Changed
 - `.issues/GLM-1/issue.md` - added sync run/history requirements.

@@ -2,11 +2,16 @@
 
 **Date:** 2026-01-31
 
+**Prompt/Ask:** Not recorded (predates template).
+
 ## Completed
 - Recorded that downstream status flags will live in JSON metadata for now.
 
 ## Current Status
 - GLM-1 now specifies JSON-based status flags until downstream system models are added.
+
+## Plan Coverage
+- Not recorded (predates template).
 
 ## Files Changed
 - `.issues/GLM-1/issue.md` - added JSON metadata note.

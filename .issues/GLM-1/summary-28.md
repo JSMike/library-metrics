@@ -2,11 +2,16 @@
 
 **Date:** 2026-01-31
 
+**Prompt/Ask:** Not recorded (predates template).
+
 ## Completed
 - Added README instructions for installing Datasette via apt or Homebrew and running the local viewer.
 
 ## Current Status
 - Project README now documents self-hosted SQLite viewing steps.
+
+## Plan Coverage
+- Not recorded (predates template).
 
 ## Files Changed
 - `README.md` - added Datasette install/run instructions.

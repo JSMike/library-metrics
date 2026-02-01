@@ -39,3 +39,4 @@ Generated: 2026-02-01
 | [GLM-5](./GLM-5/issue.md) | Add projects list page and header navigation | 2026-02-01 |
 | [GLM-7](./GLM-7/issue.md) | Link parent references in usage report headers | 2026-02-01 |
 | [GLM-11](./GLM-11/issue.md) | Replace drizzle-kit migrations with Bun-based migrator | 2026-02-01 |
+| [GLM-12](./GLM-12/issue.md) | Document fork workflow for keeping local SQLite | 2026-02-01 |

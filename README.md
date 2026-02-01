@@ -51,6 +51,24 @@ Then run a forced sync:
 bun --bun run sync:gitlab -- --force
 ```
 
+### Forks: Keep Local SQLite While Pulling Upstream
+
+If the boilerplate repo tracks the SQLite file but your fork needs its own DB
+file, you can keep your local DB while still pulling upstream changes by using
+a custom merge driver.
+
+In your fork only:
+
+```bash
+# Keep local sqlite on merges/pulls from upstream
+echo "data/gitlab-metrics.sqlite merge=keepmine" >> .gitattributes
+git config merge.keepmine.name "Keep local sqlite"
+git config merge.keepmine.driver true
+```
+
+Now upstream pulls will always keep your fork’s SQLite file, while you can still
+commit local DB changes in the fork.
+
 ### Sync Debugging
 
 Enable debug logs and scan progress:

@@ -76,7 +76,18 @@ function QueryDetailPage() {
         <div>
           <h1>{detail.queryKeyTitle}</h1>
           <p>
-            File-level matches for {detail.targetTitle} / {detail.subTargetTitle}.
+            File-level matches for{' '}
+            <Link to="/queries/$targetKey" params={{ targetKey }}>
+              {detail.targetTitle}
+            </Link>{' '}
+            /{' '}
+            <Link
+              to="/queries/$targetKey/$subTargetKey"
+              params={{ targetKey, subTargetKey }}
+            >
+              {detail.subTargetTitle}
+            </Link>
+            .
           </p>
         </div>
         <div className="queries-links">

@@ -8,6 +8,7 @@ Generated: 2026-02-01
 
 | ID | Title | Complexity | Blocked By |
 | --- | --- | --- | --- |
+| [GLM-6](./GLM-6/issue.md) | Make /projects search optional for header link | low | |
 
 ### Ready
 
@@ -33,3 +34,4 @@ Generated: 2026-02-01
 | [GLM-3](./GLM-3/issue.md) | Migrate styles from CSS to SCSS | 2026-02-01 |
 | [GLM-4](./GLM-4/issue.md) | Revamp usage queries reporting and routing | 2026-02-01 |
 | [GLM-5](./GLM-5/issue.md) | Add projects list page and header navigation | 2026-02-01 |
+| [GLM-7](./GLM-7/issue.md) | Link parent references in usage report headers | 2026-02-01 |

@@ -1,4 +1,4 @@
-import { Link, createFileRoute } from '@tanstack/react-router'
+import { Link, createFileRoute, type SearchSchemaInput } from '@tanstack/react-router'
 import { useMemo } from 'react'
 import { trpcClient } from '@/lib/trpc-client'
 import './dependencies.scss'
@@ -22,7 +22,13 @@ const parsePositiveInt = (value: unknown, fallback: number) => {
   return floored > 0 ? floored : fallback
 }
 
-const parseSearch = (search: Record<string, unknown>) => {
+type ProjectsSearchInput = SearchSchemaInput & {
+  query?: string
+  page?: number
+  pageSize?: number
+}
+
+const parseSearch = (search: ProjectsSearchInput) => {
   const query =
     typeof search.query === 'string' ? sanitizeQuery(search.query) : ''
   const page = parsePositiveInt(search.page, 1)

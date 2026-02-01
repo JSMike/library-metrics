@@ -84,7 +84,19 @@ function ProjectSourceQueryPage() {
         <div>
           <h1>{detail.queryKeyTitle}</h1>
           <p>
-            Source usage for {detail.projectName} / {detail.targetTitle}.
+            Source usage for{' '}
+            <Link to="/project" search={{ path }}>
+              {detail.projectName}
+            </Link>{' '}
+            /{' '}
+            <Link
+              to="/project/usage/$targetKey/$subTargetKey"
+              params={{ targetKey, subTargetKey }}
+              search={{ path }}
+            >
+              {detail.subTargetTitle}
+            </Link>
+            .
           </p>
         </div>
         <div className="queries-links">

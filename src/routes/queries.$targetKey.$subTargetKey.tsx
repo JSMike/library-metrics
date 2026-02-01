@@ -77,7 +77,11 @@ function SubTargetDetailPage() {
         <div>
           <h1>{detail.subTargetTitle}</h1>
           <p>
-            Projects matched for {detail.targetTitle} / {detail.subTargetTitle}.
+            Projects matched for{' '}
+            <Link to="/queries/$targetKey" params={{ targetKey }}>
+              {detail.targetTitle}
+            </Link>{' '}
+            / {detail.subTargetTitle}.
           </p>
         </div>
         <div className="queries-links">

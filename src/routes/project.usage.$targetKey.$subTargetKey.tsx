@@ -102,7 +102,11 @@ function ProjectSourceSubTargetPage() {
         <div>
           <h1>{detail.subTargetTitle}</h1>
           <p>
-            Source usage for {detail.projectName} / {detail.targetTitle}.
+            Source usage for{' '}
+            <Link to="/project" search={{ path }}>
+              {detail.projectName}
+            </Link>{' '}
+            / {detail.targetTitle}.
           </p>
         </div>
         <div className="queries-links">

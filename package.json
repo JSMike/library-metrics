@@ -4,9 +4,9 @@
   "type": "module",
   "scripts": {
     "dev": "bun --bun vite dev --port 3000",
-    "build": "bun --bunvite build",
-    "preview": "bun --bunvite preview",
-    "test": "bun --bunvitest run",
+    "build": "bun --bun vite build",
+    "preview": "bun --bun vite preview",
+    "test": "bun --bun vitest run",
     "db:generate": "npx drizzle-kit generate",
     "db:migrate": "bun --bun run scripts/db-migrate.ts",
     "db:view:install:linux": "sudo apt-get install -y pipx && pipx ensurepath && pipx install datasette",

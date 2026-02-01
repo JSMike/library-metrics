@@ -341,6 +341,33 @@ export const fetchDependencySummary = async () => {
   return rows;
 };
 
+export const fetchProjectSummary = async () => {
+  const runId = await getLatestRunId();
+  const baseUrl = getGitLabBaseUrl();
+  if (!runId) {
+    return { baseUrl, projects: [] as Array<{
+      projectId: number;
+      projectName: string;
+      projectPath: string;
+      lastActivityAt: number | null;
+    }> };
+  }
+
+  const rows = await db
+    .select({
+      projectId: project.id,
+      projectName: project.name,
+      projectPath: project.pathWithNamespace,
+      lastActivityAt: projectSnapshot.lastActivityAt,
+    })
+    .from(projectSnapshot)
+    .leftJoin(project, eq(projectSnapshot.projectId, project.id))
+    .where(eq(projectSnapshot.syncId, runId))
+    .orderBy(asc(project.name), asc(project.pathWithNamespace));
+
+  return { baseUrl, projects: rows };
+};
+
 export const fetchDependencyDetail = async (options: {
   scope?: string;
   lib?: string;

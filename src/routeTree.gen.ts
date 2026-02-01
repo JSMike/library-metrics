@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as QueriesRouteImport } from './routes/queries'
+import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as ProjectRouteImport } from './routes/project'
 import { Route as DependencyRouteImport } from './routes/dependency'
 import { Route as DependenciesRouteImport } from './routes/dependencies'
@@ -25,6 +26,11 @@ import { Route as ProjectUsageTargetKeySubTargetKeyQueryKeyRouteImport } from '.
 const QueriesRoute = QueriesRouteImport.update({
   id: '/queries',
   path: '/queries',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectsRoute = ProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProjectRoute = ProjectRouteImport.update({
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/dependencies': typeof DependenciesRoute
   '/dependency': typeof DependencyRoute
   '/project': typeof ProjectRouteWithChildren
+  '/projects': typeof ProjectsRoute
   '/queries': typeof QueriesRouteWithChildren
   '/queries/$targetKey': typeof QueriesTargetKeyRouteWithChildren
   '/api/trpc/$path': typeof ApiTrpcPathRoute
@@ -107,6 +114,7 @@ export interface FileRoutesByTo {
   '/dependencies': typeof DependenciesRoute
   '/dependency': typeof DependencyRoute
   '/project': typeof ProjectRouteWithChildren
+  '/projects': typeof ProjectsRoute
   '/queries': typeof QueriesRouteWithChildren
   '/queries/$targetKey': typeof QueriesTargetKeyRouteWithChildren
   '/api/trpc/$path': typeof ApiTrpcPathRoute
@@ -122,6 +130,7 @@ export interface FileRoutesById {
   '/dependencies': typeof DependenciesRoute
   '/dependency': typeof DependencyRoute
   '/project': typeof ProjectRouteWithChildren
+  '/projects': typeof ProjectsRoute
   '/queries': typeof QueriesRouteWithChildren
   '/queries/$targetKey': typeof QueriesTargetKeyRouteWithChildren
   '/api/trpc/$path': typeof ApiTrpcPathRoute
@@ -138,6 +147,7 @@ export interface FileRouteTypes {
     | '/dependencies'
     | '/dependency'
     | '/project'
+    | '/projects'
     | '/queries'
     | '/queries/$targetKey'
     | '/api/trpc/$path'
@@ -152,6 +162,7 @@ export interface FileRouteTypes {
     | '/dependencies'
     | '/dependency'
     | '/project'
+    | '/projects'
     | '/queries'
     | '/queries/$targetKey'
     | '/api/trpc/$path'
@@ -166,6 +177,7 @@ export interface FileRouteTypes {
     | '/dependencies'
     | '/dependency'
     | '/project'
+    | '/projects'
     | '/queries'
     | '/queries/$targetKey'
     | '/api/trpc/$path'
@@ -181,6 +193,7 @@ export interface RootRouteChildren {
   DependenciesRoute: typeof DependenciesRoute
   DependencyRoute: typeof DependencyRoute
   ProjectRoute: typeof ProjectRouteWithChildren
+  ProjectsRoute: typeof ProjectsRoute
   QueriesRoute: typeof QueriesRouteWithChildren
   ApiTrpcPathRoute: typeof ApiTrpcPathRoute
 }
@@ -192,6 +205,13 @@ declare module '@tanstack/react-router' {
       path: '/queries'
       fullPath: '/queries'
       preLoaderRoute: typeof QueriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projects': {
+      id: '/projects'
+      path: '/projects'
+      fullPath: '/projects'
+      preLoaderRoute: typeof ProjectsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/project': {
@@ -345,6 +365,7 @@ const rootRouteChildren: RootRouteChildren = {
   DependenciesRoute: DependenciesRoute,
   DependencyRoute: DependencyRoute,
   ProjectRoute: ProjectRouteWithChildren,
+  ProjectsRoute: ProjectsRoute,
   QueriesRoute: QueriesRouteWithChildren,
   ApiTrpcPathRoute: ApiTrpcPathRoute,
 }

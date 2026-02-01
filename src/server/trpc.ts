@@ -2,6 +2,7 @@ import { initTRPC } from '@trpc/server'
 import {
   fetchDependencySummary,
   fetchLatestSyncRun,
+  fetchProjectSummary,
   fetchUsageSummary,
   fetchUsageTargets,
 } from './reporting'
@@ -19,6 +20,7 @@ const t = initTRPC.context<TrpcContext>().create()
 export const appRouter = t.router({
   latestSyncRun: t.procedure.query(() => fetchLatestSyncRun()),
   dependencySummary: t.procedure.query(() => fetchDependencySummary()),
+  projectSummary: t.procedure.query(() => fetchProjectSummary()),
   usageSummary: t.procedure.query(() => fetchUsageSummary()),
   usageTargets: t.procedure.query(() => fetchUsageTargets()),
 })

@@ -32,3 +32,4 @@ Generated: 2026-02-01
 | [GLM-2](./GLM-2/issue.md) | Enhance dependency browsing and detail pages | 2026-02-01 |
 | [GLM-3](./GLM-3/issue.md) | Migrate styles from CSS to SCSS | 2026-02-01 |
 | [GLM-4](./GLM-4/issue.md) | Revamp usage queries reporting and routing | 2026-02-01 |
+| [GLM-5](./GLM-5/issue.md) | Add projects list page and header navigation | 2026-02-01 |

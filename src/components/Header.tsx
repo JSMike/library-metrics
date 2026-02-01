@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 
-import './Header.css'
+import './Header.scss'
 
 export default function Header() {
   return (

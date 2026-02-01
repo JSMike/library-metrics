@@ -8,6 +8,13 @@
       "when": 1769881743168,
       "tag": "0000_legal_jimmy_woo",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1769942631902,
+      "tag": "0001_mysterious_living_lightning",
+      "breakpoints": true
     }
   ]
 }

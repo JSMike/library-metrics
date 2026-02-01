@@ -1,6 +1,11 @@
-import { Link, createFileRoute } from '@tanstack/react-router'
+import {
+  Link,
+  Outlet,
+  createFileRoute,
+  useRouterState,
+} from '@tanstack/react-router'
 import { getProjectDetail } from '@/server/reporting'
-import './dependencies.css'
+import './dependencies.scss'
 
 const SEARCH_MAX_LENGTH = 400
 
@@ -31,6 +36,14 @@ const splitDependencyName = (name?: string | null) => {
   return { scope: '', lib: value }
 }
 
+const getSegment = (value?: string | null) => {
+  if (!value) {
+    return ''
+  }
+  const parts = value.split('/').filter(Boolean)
+  return parts.length > 0 ? parts[parts.length - 1] : value
+}
+
 export const Route = createFileRoute('/project')({
   validateSearch: parseSearch,
   loader: async ({ location }) => {
@@ -55,6 +68,13 @@ const formatTimestamp = (value?: number | null) =>
 
 function ProjectDetailPage() {
   const { detail, path } = Route.useLoaderData()
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  })
+
+  if (pathname.startsWith('/project/usage')) {
+    return <Outlet />
+  }
 
   if (!path) {
     return (
@@ -94,6 +114,30 @@ function ProjectDetailPage() {
   const membersUrl = projectPath
     ? joinGitLabUrl(baseUrl, `${projectPath}/-/project_members`)
     : null
+  const sourceUsageByTarget = detail.sourceUsage.reduce(
+    (acc, row) => {
+      const entry =
+        acc.get(row.targetKey) ??
+        {
+          targetKey: row.targetKey,
+          targetTitle: row.targetTitle,
+          rows: [],
+        }
+      entry.rows.push(row)
+      if (!acc.has(row.targetKey)) {
+        acc.set(row.targetKey, entry)
+      }
+      return acc
+    },
+    new Map<
+      string,
+      {
+        targetKey: string
+        targetTitle: string
+        rows: typeof detail.sourceUsage
+      }
+    >(),
+  )
 
   return (
     <div className="dependencies-page">
@@ -177,6 +221,74 @@ function ProjectDetailPage() {
           </table>
         </div>
       )}
+
+      {detail.sourceUsage.length > 0 ? (
+        <div>
+          <h2>Library Usage (Source Project)</h2>
+          <p>
+            Usage queries for libraries defined in this project. These results
+            are excluded from the usage reports.
+          </p>
+          {Array.from(sourceUsageByTarget.values()).map((target) => (
+            <div key={target.targetKey}>
+              <h3>{target.targetTitle}</h3>
+              <div className="dependencies-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Sub-target</th>
+                      <th>Query</th>
+                      <th>Matches</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {target.rows.map((row) => (
+                      <tr
+                        key={`${row.targetKey}-${row.subTargetKey ?? ''}-${row.queryKey}`}
+                      >
+                        <td>
+                          {row.subTargetKey ? (
+                            <Link
+                              to="/project/usage/$targetKey/$subTargetKey"
+                              params={{
+                                targetKey: row.targetKey,
+                                subTargetKey: getSegment(row.subTargetKey),
+                              }}
+                              search={{ path: detail.projectPath || undefined }}
+                            >
+                              {row.subTargetTitle}
+                            </Link>
+                          ) : (
+                            <span className="dependencies-muted">—</span>
+                          )}
+                        </td>
+                        <td>
+                          {row.subTargetKey ? (
+                            <Link
+                              to="/project/usage/$targetKey/$subTargetKey/$queryKey"
+                              params={{
+                                targetKey: row.targetKey,
+                                subTargetKey: getSegment(row.subTargetKey),
+                                queryKey: getSegment(row.queryKey),
+                              }}
+                              search={{ path: detail.projectPath || undefined }}
+                            >
+                              {row.queryKeyTitle}
+                            </Link>
+                          ) : (
+                            <span>{row.queryKeyTitle}</span>
+                          )}
+                        </td>
+                        <td>{row.matchCount}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
     </div>
   )
 }

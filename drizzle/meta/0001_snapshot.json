@@ -1,0 +1,1469 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "1ace8fd8-8c22-4df7-b5b9-0eb2b38671ee",
+  "prevId": "c69d97fc-3fdd-4708-923d-28d2118e787d",
+  "tables": {
+    "dependency": {
+      "name": "dependency",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "scope": {
+          "name": "scope",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "short_name": {
+          "name": "short_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "dependency_name_idx": {
+          "name": "dependency_name_idx",
+          "columns": [
+            "name"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "gitlab_group": {
+      "name": "gitlab_group",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "gitlab_id": {
+          "name": "gitlab_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "path": {
+          "name": "path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "web_url": {
+          "name": "web_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "gitlab_group_gitlab_id_idx": {
+          "name": "gitlab_group_gitlab_id_idx",
+          "columns": [
+            "gitlab_id"
+          ],
+          "isUnique": true
+        },
+        "gitlab_group_path_idx": {
+          "name": "gitlab_group_path_idx",
+          "columns": [
+            "path"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "gitlab_user": {
+      "name": "gitlab_user",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "gitlab_user_id": {
+          "name": "gitlab_user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "username": {
+          "name": "username",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "gitlab_user_gitlab_id_idx": {
+          "name": "gitlab_user_gitlab_id_idx",
+          "columns": [
+            "gitlab_user_id"
+          ],
+          "isUnique": true
+        },
+        "gitlab_user_username_idx": {
+          "name": "gitlab_user_username_idx",
+          "columns": [
+            "username"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "lock_dependency_snapshot": {
+      "name": "lock_dependency_snapshot",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sync_id": {
+          "name": "sync_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "dependency_id": {
+          "name": "dependency_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "package_path": {
+          "name": "package_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "lockfile_path": {
+          "name": "lockfile_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "version_resolved": {
+          "name": "version_resolved",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "dep_type": {
+          "name": "dep_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "lock_dependency_project_idx": {
+          "name": "lock_dependency_project_idx",
+          "columns": [
+            "project_id",
+            "sync_id",
+            "dependency_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "lock_dependency_snapshot_project_id_project_id_fk": {
+          "name": "lock_dependency_snapshot_project_id_project_id_fk",
+          "tableFrom": "lock_dependency_snapshot",
+          "tableTo": "project",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "lock_dependency_snapshot_sync_id_sync_run_id_fk": {
+          "name": "lock_dependency_snapshot_sync_id_sync_run_id_fk",
+          "tableFrom": "lock_dependency_snapshot",
+          "tableTo": "sync_run",
+          "columnsFrom": [
+            "sync_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "lock_dependency_snapshot_dependency_id_dependency_id_fk": {
+          "name": "lock_dependency_snapshot_dependency_id_dependency_id_fk",
+          "tableFrom": "lock_dependency_snapshot",
+          "tableTo": "dependency",
+          "columnsFrom": [
+            "dependency_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "package_snapshot": {
+      "name": "package_snapshot",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sync_id": {
+          "name": "sync_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "package_path": {
+          "name": "package_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "version": {
+          "name": "version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "private": {
+          "name": "private",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": false
+        },
+        "workspaces_json": {
+          "name": "workspaces_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "is_workspace_root": {
+          "name": "is_workspace_root",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        }
+      },
+      "indexes": {
+        "package_snapshot_project_sync_path_idx": {
+          "name": "package_snapshot_project_sync_path_idx",
+          "columns": [
+            "project_id",
+            "sync_id",
+            "package_path"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "package_snapshot_project_id_project_id_fk": {
+          "name": "package_snapshot_project_id_project_id_fk",
+          "tableFrom": "package_snapshot",
+          "tableTo": "project",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "package_snapshot_sync_id_sync_run_id_fk": {
+          "name": "package_snapshot_sync_id_sync_run_id_fk",
+          "tableFrom": "package_snapshot",
+          "tableTo": "sync_run",
+          "columnsFrom": [
+            "sync_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "project": {
+      "name": "project",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "gitlab_id": {
+          "name": "gitlab_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "group_id": {
+          "name": "group_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "path_with_namespace": {
+          "name": "path_with_namespace",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "project_gitlab_id_idx": {
+          "name": "project_gitlab_id_idx",
+          "columns": [
+            "gitlab_id"
+          ],
+          "isUnique": true
+        },
+        "project_path_with_namespace_idx": {
+          "name": "project_path_with_namespace_idx",
+          "columns": [
+            "path_with_namespace"
+          ],
+          "isUnique": true
+        },
+        "project_group_idx": {
+          "name": "project_group_idx",
+          "columns": [
+            "group_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "project_group_id_gitlab_group_id_fk": {
+          "name": "project_group_id_gitlab_group_id_fk",
+          "tableFrom": "project",
+          "tableTo": "gitlab_group",
+          "columnsFrom": [
+            "group_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "project_dependency_snapshot": {
+      "name": "project_dependency_snapshot",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sync_id": {
+          "name": "sync_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "dependency_id": {
+          "name": "dependency_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "package_path": {
+          "name": "package_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "version_spec": {
+          "name": "version_spec",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "dep_type": {
+          "name": "dep_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "project_dependency_project_idx": {
+          "name": "project_dependency_project_idx",
+          "columns": [
+            "project_id",
+            "sync_id",
+            "dependency_id"
+          ],
+          "isUnique": false
+        },
+        "project_dependency_dep_idx": {
+          "name": "project_dependency_dep_idx",
+          "columns": [
+            "dependency_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "project_dependency_snapshot_project_id_project_id_fk": {
+          "name": "project_dependency_snapshot_project_id_project_id_fk",
+          "tableFrom": "project_dependency_snapshot",
+          "tableTo": "project",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "project_dependency_snapshot_sync_id_sync_run_id_fk": {
+          "name": "project_dependency_snapshot_sync_id_sync_run_id_fk",
+          "tableFrom": "project_dependency_snapshot",
+          "tableTo": "sync_run",
+          "columnsFrom": [
+            "sync_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "project_dependency_snapshot_dependency_id_dependency_id_fk": {
+          "name": "project_dependency_snapshot_dependency_id_dependency_id_fk",
+          "tableFrom": "project_dependency_snapshot",
+          "tableTo": "dependency",
+          "columnsFrom": [
+            "dependency_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "project_external_ref_snapshot": {
+      "name": "project_external_ref_snapshot",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sync_id": {
+          "name": "sync_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "system": {
+          "name": "system",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "external_id": {
+          "name": "external_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "external_key": {
+          "name": "external_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "external_ref_project_sync_idx": {
+          "name": "external_ref_project_sync_idx",
+          "columns": [
+            "project_id",
+            "sync_id"
+          ],
+          "isUnique": false
+        },
+        "external_ref_system_idx": {
+          "name": "external_ref_system_idx",
+          "columns": [
+            "system"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "project_external_ref_snapshot_project_id_project_id_fk": {
+          "name": "project_external_ref_snapshot_project_id_project_id_fk",
+          "tableFrom": "project_external_ref_snapshot",
+          "tableTo": "project",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "project_external_ref_snapshot_sync_id_sync_run_id_fk": {
+          "name": "project_external_ref_snapshot_sync_id_sync_run_id_fk",
+          "tableFrom": "project_external_ref_snapshot",
+          "tableTo": "sync_run",
+          "columnsFrom": [
+            "sync_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "project_file_snapshot": {
+      "name": "project_file_snapshot",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sync_id": {
+          "name": "sync_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "path": {
+          "name": "path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "ref": {
+          "name": "ref",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "blob_sha": {
+          "name": "blob_sha",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "content_json": {
+          "name": "content_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "content_raw": {
+          "name": "content_raw",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "fetched_at": {
+          "name": "fetched_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "project_file_project_sync_kind_idx": {
+          "name": "project_file_project_sync_kind_idx",
+          "columns": [
+            "project_id",
+            "sync_id",
+            "kind"
+          ],
+          "isUnique": false
+        },
+        "project_file_project_sync_path_idx": {
+          "name": "project_file_project_sync_path_idx",
+          "columns": [
+            "project_id",
+            "sync_id",
+            "path"
+          ],
+          "isUnique": false
+        },
+        "project_file_snapshot_unique_idx": {
+          "name": "project_file_snapshot_unique_idx",
+          "columns": [
+            "project_id",
+            "sync_id",
+            "path",
+            "kind"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "project_file_snapshot_project_id_project_id_fk": {
+          "name": "project_file_snapshot_project_id_project_id_fk",
+          "tableFrom": "project_file_snapshot",
+          "tableTo": "project",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "project_file_snapshot_sync_id_sync_run_id_fk": {
+          "name": "project_file_snapshot_sync_id_sync_run_id_fk",
+          "tableFrom": "project_file_snapshot",
+          "tableTo": "sync_run",
+          "columnsFrom": [
+            "sync_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "project_member_snapshot": {
+      "name": "project_member_snapshot",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sync_id": {
+          "name": "sync_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "gitlab_user_id": {
+          "name": "gitlab_user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "username": {
+          "name": "username",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "access_level": {
+          "name": "access_level",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "project_member_project_sync_idx": {
+          "name": "project_member_project_sync_idx",
+          "columns": [
+            "project_id",
+            "sync_id"
+          ],
+          "isUnique": false
+        },
+        "project_member_user_idx": {
+          "name": "project_member_user_idx",
+          "columns": [
+            "gitlab_user_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "project_member_snapshot_project_id_project_id_fk": {
+          "name": "project_member_snapshot_project_id_project_id_fk",
+          "tableFrom": "project_member_snapshot",
+          "tableTo": "project",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "project_member_snapshot_sync_id_sync_run_id_fk": {
+          "name": "project_member_snapshot_sync_id_sync_run_id_fk",
+          "tableFrom": "project_member_snapshot",
+          "tableTo": "sync_run",
+          "columnsFrom": [
+            "sync_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "project_member_snapshot_gitlab_user_id_gitlab_user_gitlab_user_id_fk": {
+          "name": "project_member_snapshot_gitlab_user_id_gitlab_user_gitlab_user_id_fk",
+          "tableFrom": "project_member_snapshot",
+          "tableTo": "gitlab_user",
+          "columnsFrom": [
+            "gitlab_user_id"
+          ],
+          "columnsTo": [
+            "gitlab_user_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "project_snapshot": {
+      "name": "project_snapshot",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sync_id": {
+          "name": "sync_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "default_branch": {
+          "name": "default_branch",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "archived": {
+          "name": "archived",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "visibility": {
+          "name": "visibility",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "last_activity_at": {
+          "name": "last_activity_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "metadata_json": {
+          "name": "metadata_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "ref": {
+          "name": "ref",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "latest_commit_sha": {
+          "name": "latest_commit_sha",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "latest_commit_at": {
+          "name": "latest_commit_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "data_source_sync_id": {
+          "name": "data_source_sync_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "is_unchanged": {
+          "name": "is_unchanged",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "checked_at": {
+          "name": "checked_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
+        }
+      },
+      "indexes": {
+        "project_snapshot_project_sync_idx": {
+          "name": "project_snapshot_project_sync_idx",
+          "columns": [
+            "project_id",
+            "sync_id"
+          ],
+          "isUnique": true
+        },
+        "project_snapshot_project_idx": {
+          "name": "project_snapshot_project_idx",
+          "columns": [
+            "project_id"
+          ],
+          "isUnique": false
+        },
+        "project_snapshot_sync_idx": {
+          "name": "project_snapshot_sync_idx",
+          "columns": [
+            "sync_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "project_snapshot_project_id_project_id_fk": {
+          "name": "project_snapshot_project_id_project_id_fk",
+          "tableFrom": "project_snapshot",
+          "tableTo": "project",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "project_snapshot_sync_id_sync_run_id_fk": {
+          "name": "project_snapshot_sync_id_sync_run_id_fk",
+          "tableFrom": "project_snapshot",
+          "tableTo": "sync_run",
+          "columnsFrom": [
+            "sync_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "project_snapshot_data_source_sync_id_sync_run_id_fk": {
+          "name": "project_snapshot_data_source_sync_id_sync_run_id_fk",
+          "tableFrom": "project_snapshot",
+          "tableTo": "sync_run",
+          "columnsFrom": [
+            "data_source_sync_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "sync_run": {
+      "name": "sync_run",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "sync_run_status_idx": {
+          "name": "sync_run_status_idx",
+          "columns": [
+            "status"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "usage_file_result": {
+      "name": "usage_file_result",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sync_id": {
+          "name": "sync_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "target_key": {
+          "name": "target_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sub_target_key": {
+          "name": "sub_target_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "query_key": {
+          "name": "query_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "file_path": {
+          "name": "file_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "match_count": {
+          "name": "match_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "scanned_at": {
+          "name": "scanned_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "usage_file_result_project_query_idx": {
+          "name": "usage_file_result_project_query_idx",
+          "columns": [
+            "project_id",
+            "sync_id",
+            "query_key"
+          ],
+          "isUnique": false
+        },
+        "usage_file_result_target_idx": {
+          "name": "usage_file_result_target_idx",
+          "columns": [
+            "target_key",
+            "sync_id"
+          ],
+          "isUnique": false
+        },
+        "usage_file_result_target_sub_idx": {
+          "name": "usage_file_result_target_sub_idx",
+          "columns": [
+            "target_key",
+            "sub_target_key",
+            "sync_id"
+          ],
+          "isUnique": false
+        },
+        "usage_file_result_query_idx": {
+          "name": "usage_file_result_query_idx",
+          "columns": [
+            "query_key",
+            "sync_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "usage_file_result_project_id_project_id_fk": {
+          "name": "usage_file_result_project_id_project_id_fk",
+          "tableFrom": "usage_file_result",
+          "tableTo": "project",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "usage_file_result_sync_id_sync_run_id_fk": {
+          "name": "usage_file_result_sync_id_sync_run_id_fk",
+          "tableFrom": "usage_file_result",
+          "tableTo": "sync_run",
+          "columnsFrom": [
+            "sync_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "usage_result": {
+      "name": "usage_result",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sync_id": {
+          "name": "sync_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "target_key": {
+          "name": "target_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sub_target_key": {
+          "name": "sub_target_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "query_key": {
+          "name": "query_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "match_count": {
+          "name": "match_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "scanned_at": {
+          "name": "scanned_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "usage_result_project_query_idx": {
+          "name": "usage_result_project_query_idx",
+          "columns": [
+            "project_id",
+            "sync_id",
+            "query_key"
+          ],
+          "isUnique": false
+        },
+        "usage_result_target_idx": {
+          "name": "usage_result_target_idx",
+          "columns": [
+            "target_key",
+            "sync_id"
+          ],
+          "isUnique": false
+        },
+        "usage_result_target_sub_idx": {
+          "name": "usage_result_target_sub_idx",
+          "columns": [
+            "target_key",
+            "sub_target_key",
+            "sync_id"
+          ],
+          "isUnique": false
+        },
+        "usage_result_query_idx": {
+          "name": "usage_result_query_idx",
+          "columns": [
+            "query_key",
+            "sync_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "usage_result_project_id_project_id_fk": {
+          "name": "usage_result_project_id_project_id_fk",
+          "tableFrom": "usage_result",
+          "tableTo": "project",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "usage_result_sync_id_sync_run_id_fk": {
+          "name": "usage_result_sync_id_sync_run_id_fk",
+          "tableFrom": "usage_result",
+          "tableTo": "sync_run",
+          "columnsFrom": [
+            "sync_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}

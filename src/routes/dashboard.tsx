@@ -1,16 +1,16 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { useEffect, useMemo, useState } from 'react'
 import { trpcClient } from '@/lib/trpc-client'
-import './dashboard.css'
+import './dashboard.scss'
 
 export const dashboardLoader = async () => {
-  const [latestSyncRun, dependencySummary, usageSummary] = await Promise.all([
+  const [latestSyncRun, dependencySummary, usageTargets] = await Promise.all([
     trpcClient.latestSyncRun.query(),
     trpcClient.dependencySummary.query(),
-    trpcClient.usageSummary.query(),
+    trpcClient.usageTargets.query(),
   ])
 
-  return { latestSyncRun, dependencySummary, usageSummary }
+  return { latestSyncRun, dependencySummary, usageTargets }
 }
 
 type DashboardData = Awaited<ReturnType<typeof dashboardLoader>>
@@ -45,11 +45,11 @@ const splitDependencyName = (name?: string | null) => {
 export function DashboardPage({
   latestSyncRun,
   dependencySummary,
-  usageSummary,
+  usageTargets,
 }: DashboardData) {
-  const topUsage = usageSummary.slice(0, 10)
   const [dependencyFilter, setDependencyFilter] = useState('')
   const [dependencyPage, setDependencyPage] = useState(1)
+  const [usagePage, setUsagePage] = useState(1)
 
   const filteredDependencies = useMemo(() => {
     const normalized = dependencyFilter.trim().toLowerCase()
@@ -74,6 +74,16 @@ export function DashboardPage({
   const pagedDependencies = filteredDependencies.slice(
     dependencyStart,
     dependencyStart + PAGE_SIZE,
+  )
+  const totalUsagePages = Math.max(
+    1,
+    Math.ceil(usageTargets.length / PAGE_SIZE),
+  )
+  const currentUsagePage = Math.min(usagePage, totalUsagePages)
+  const usageStart = (currentUsagePage - 1) * PAGE_SIZE
+  const pagedUsageTargets = usageTargets.slice(
+    usageStart,
+    usageStart + PAGE_SIZE,
   )
 
   return (
@@ -195,8 +205,13 @@ export function DashboardPage({
       </section>
 
       <section>
-        <h2>Top Usage Queries</h2>
-        {topUsage.length === 0 ? (
+        <div className="dashboard-section-header">
+          <h2>Usage Queries</h2>
+          <Link className="dashboard-link" to="/queries">
+            See all queries
+          </Link>
+        </div>
+        {usageTargets.length === 0 ? (
           <p>No usage data for the latest run.</p>
         ) : (
           <div className="dashboard-table">
@@ -204,28 +219,50 @@ export function DashboardPage({
               <thead>
                 <tr>
                   <th>Target</th>
-                  <th>Sub-target</th>
-                  <th>Query</th>
-                  <th>Matches</th>
-                  <th>Projects</th>
                 </tr>
               </thead>
               <tbody>
-                {topUsage.map((row) => (
-                  <tr
-                    key={`${row.targetKey}-${row.subTargetKey ?? ''}-${row.queryKey}`}
-                  >
-                    <td>{row.targetKey}</td>
-                    <td>{row.subTargetKey ?? '—'}</td>
-                    <td>{row.queryKey}</td>
-                    <td>{row.matchCount}</td>
-                    <td>{row.projectCount}</td>
+                {pagedUsageTargets.map((row) => (
+                  <tr key={row.targetKey}>
+                    <td>
+                      <Link
+                        to="/queries/$targetKey"
+                        params={{ targetKey: row.targetKey }}
+                      >
+                        {row.targetTitle}
+                      </Link>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
+        {usageTargets.length > PAGE_SIZE ? (
+          <div className="dashboard-pagination">
+            <button
+              type="button"
+              onClick={() => setUsagePage((page) => Math.max(1, page - 1))}
+              disabled={currentUsagePage <= 1}
+            >
+              Previous
+            </button>
+            <span>
+              Page {currentUsagePage} of {totalUsagePages}
+            </span>
+            <button
+              type="button"
+              onClick={() =>
+                setUsagePage((page) =>
+                  Math.min(totalUsagePages, page + 1),
+                )
+              }
+              disabled={currentUsagePage >= totalUsagePages}
+            >
+              Next
+            </button>
+          </div>
+        ) : null}
       </section>
     </div>
   )

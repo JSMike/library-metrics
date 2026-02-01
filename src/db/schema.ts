@@ -354,3 +354,42 @@ export const usageResult = sqliteTable(
     queryIdx: index("usage_result_query_idx").on(table.queryKey, table.syncId),
   }),
 );
+
+export const usageFileResult = sqliteTable(
+  "usage_file_result",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    projectId: integer("project_id")
+      .notNull()
+      .references(() => project.id),
+    syncId: integer("sync_id")
+      .notNull()
+      .references(() => syncRun.id),
+    targetKey: text("target_key").notNull(),
+    subTargetKey: text("sub_target_key"),
+    queryKey: text("query_key").notNull(),
+    filePath: text("file_path").notNull(),
+    matchCount: integer("match_count").notNull().default(0),
+    scannedAt: integer("scanned_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (table) => ({
+    projectQueryIdx: index("usage_file_result_project_query_idx").on(
+      table.projectId,
+      table.syncId,
+      table.queryKey,
+    ),
+    targetIdx: index("usage_file_result_target_idx").on(
+      table.targetKey,
+      table.syncId,
+    ),
+    targetSubIdx: index("usage_file_result_target_sub_idx").on(
+      table.targetKey,
+      table.subTargetKey,
+      table.syncId,
+    ),
+    queryIdx: index("usage_file_result_query_idx").on(
+      table.queryKey,
+      table.syncId,
+    ),
+  }),
+);

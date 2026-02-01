@@ -5,14 +5,36 @@
   display: flex;
   flex-direction: column;
   gap: 32px;
-}
 
-.dashboard h1 {
-  margin-bottom: 8px;
-}
+  h1 {
+    margin-bottom: 8px;
+  }
 
-.dashboard h2 {
-  margin-bottom: 12px;
+  h2 {
+    margin-bottom: 12px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 520px;
+  }
+
+  th,
+  td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid #e3e5e8;
+  }
+
+  th {
+    background: #f4f5f7;
+    font-weight: 600;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
 }
 
 .dashboard-section-header {
@@ -27,10 +49,10 @@
   font-weight: 600;
   text-decoration: none;
   color: #1f4b99;
-}
 
-.dashboard-link:hover {
-  text-decoration: underline;
+  &:hover {
+    text-decoration: underline;
+  }
 }
 
 .dashboard-card {
@@ -40,12 +62,12 @@
   border: 1px solid #e3e5e8;
   border-radius: 12px;
   background: #fafafa;
-}
 
-.dashboard-card > div {
-  display: flex;
-  gap: 12px;
-  align-items: baseline;
+  > div {
+    display: flex;
+    gap: 12px;
+    align-items: baseline;
+  }
 }
 
 .dashboard-label {
@@ -57,28 +79,6 @@
   overflow-x: auto;
   border: 1px solid #e3e5e8;
   border-radius: 12px;
-}
-
-.dashboard table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 520px;
-}
-
-.dashboard th,
-.dashboard td {
-  text-align: left;
-  padding: 10px 12px;
-  border-bottom: 1px solid #e3e5e8;
-}
-
-.dashboard th {
-  background: #f4f5f7;
-  font-weight: 600;
-}
-
-.dashboard tbody tr:last-child td {
-  border-bottom: none;
 }
 
 .dashboard-controls {
@@ -94,13 +94,13 @@
   align-items: center;
   gap: 8px;
   font-weight: 600;
-}
 
-.dashboard-filter input {
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid #c9ced6;
-  min-width: 220px;
+  input {
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #c9ced6;
+    min-width: 220px;
+  }
 }
 
 .dashboard-pagination {
@@ -109,17 +109,17 @@
   justify-content: flex-end;
   gap: 12px;
   padding: 12px 4px 0;
-}
 
-.dashboard-pagination button {
-  border: 1px solid #c9ced6;
-  background: #fff;
-  border-radius: 8px;
-  padding: 6px 12px;
-  cursor: pointer;
-}
+  button {
+    border: 1px solid #c9ced6;
+    background: #fff;
+    border-radius: 8px;
+    padding: 6px 12px;
+    cursor: pointer;
 
-.dashboard-pagination button:disabled {
-  opacity: 0.5;
-  cursor: default;
+    &:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+  }
 }

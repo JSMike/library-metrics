@@ -15,6 +15,7 @@ import {
   projectSnapshot,
   syncRun,
   usageResult,
+  usageFileResult,
 } from "../db/schema";
 import {
   fetchAllPages,
@@ -25,7 +26,7 @@ import {
   type GitLabProjectResponse,
 } from "../lib/gitlab";
 import { Throttler } from "../lib/throttle";
-import { usageQueries } from "../lib/usage-queries";
+import { usageQueries, usageTargets } from "../lib/usage-queries";
 
 type SyncRunStatus = "started" | "completed" | "failed" | "partial";
 
@@ -834,20 +835,9 @@ const runSync = async () => {
 
         const lockfileCache = new Map<string, ParsedLockfile>();
         const lockfileCommitCache = new Map<string, Date | null>();
-
-        const queryList = usageQueries;
+        const projectDependencyNames = new Set<string>();
         const queriesByExtension = new Map<string, typeof usageQueries>();
         const queryMatchers = new Map<string, RegExp>();
-
-        for (const query of queryList) {
-          queryMatchers.set(query.queryKey, toRegex(query));
-          for (const extension of query.extensions) {
-            const ext = extension.toLowerCase();
-            const list = queriesByExtension.get(ext) ?? [];
-            list.push(query);
-            queriesByExtension.set(ext, list);
-          }
-        }
 
         const usageCounts = new Map<
           string,
@@ -858,6 +848,16 @@ const runSync = async () => {
             count: number;
           }
         >();
+        const fileUsageRows: Array<{
+          projectId: number;
+          syncId: number;
+          targetKey: string;
+          subTargetKey: string;
+          queryKey: string;
+          filePath: string;
+          matchCount: number;
+          scannedAt: Date;
+        }> = [];
 
         const getLockfile = async (path: string) => {
           const cached = lockfileCache.get(path);
@@ -942,6 +942,7 @@ const runSync = async () => {
           const lockfile = lockPath ? await getLockfile(lockPath) : null;
 
           for (const dep of dependencies) {
+            projectDependencyNames.add(dep.name.toLowerCase());
             const dependencyId = await getDependencyId(
               dep.name,
               dependencyMap,
@@ -973,6 +974,46 @@ const runSync = async () => {
                 depType: dep.depType,
               });
             }
+          }
+        }
+
+        const projectPath = projectInfo.path_with_namespace?.toLowerCase() ?? "";
+        const enabledTargets = new Set(
+          usageTargets
+            .filter((target) => {
+              if (
+                projectDependencyNames.has(
+                  target.targetDependency.toLowerCase(),
+                )
+              ) {
+                return true;
+              }
+              if (!projectPath) {
+                return false;
+              }
+              return (
+                target.sourceProjects?.some(
+                  (path) => path.toLowerCase() === projectPath,
+                ) ?? false
+              );
+            })
+            .map((target) => target.targetKey),
+        );
+        const queryList = usageQueries.filter((query) =>
+          enabledTargets.has(query.targetKey),
+        );
+        if (queryList.length === 0) {
+          debug(
+            `[sync] ${projectLabel} usage scan skipped (no target dependencies found)`,
+          );
+        }
+        for (const query of queryList) {
+          queryMatchers.set(query.queryKey, toRegex(query));
+          for (const extension of query.extensions) {
+            const ext = extension.toLowerCase();
+            const list = queriesByExtension.get(ext) ?? [];
+            list.push(query);
+            queriesByExtension.set(ext, list);
           }
         }
 
@@ -1030,7 +1071,21 @@ const runSync = async () => {
                   count: matchCount,
                 });
               }
+              fileUsageRows.push({
+                projectId,
+                syncId: runId,
+                targetKey: query.targetKey,
+                subTargetKey: query.subTargetKey,
+                queryKey: query.queryKey,
+                filePath,
+                matchCount,
+                scannedAt: new Date(),
+              });
             }
+          }
+
+          if (fileUsageRows.length > 0) {
+            await db.insert(usageFileResult).values(fileUsageRows);
           }
 
           for (const usage of usageCounts.values()) {

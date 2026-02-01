@@ -30,3 +30,5 @@ Generated: 2026-02-01
 | --- | --- | --- |
 | [GLM-1](./GLM-1/issue.md) | Plan gitlab-metrics app structure and stack choices | 2026-01-31 |
 | [GLM-2](./GLM-2/issue.md) | Enhance dependency browsing and detail pages | 2026-02-01 |
+| [GLM-3](./GLM-3/issue.md) | Migrate styles from CSS to SCSS | 2026-02-01 |
+| [GLM-4](./GLM-4/issue.md) | Revamp usage queries reporting and routing | 2026-02-01 |

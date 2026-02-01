@@ -1,7 +1,7 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { useMemo } from 'react'
 import { trpcClient } from '@/lib/trpc-client'
-import './dependencies.scss'
+import './queries.scss'
 
 const DEFAULT_PAGE_SIZE = 50
 const PAGE_SIZE_OPTIONS = [50, 100, 200]
@@ -36,57 +36,37 @@ const parseSearch = (search: Record<string, unknown>) => {
   return { query, page, pageSize }
 }
 
-const splitDependencyName = (name?: string | null) => {
-  const value = name?.trim() ?? ''
-  if (!value) {
-    return { scope: '', lib: '' }
-  }
-  if (value.startsWith('@')) {
-    const slashIndex = value.indexOf('/')
-    if (slashIndex > 1) {
-      return {
-        scope: value.slice(1, slashIndex),
-        lib: value.slice(slashIndex + 1),
-      }
-    }
-  }
-  return { scope: '', lib: value }
-}
-
-export const Route = createFileRoute('/dependencies')({
+export const Route = createFileRoute('/queries')({
   validateSearch: parseSearch,
   loader: async () => {
-    const dependencySummary = await trpcClient.dependencySummary.query()
-    return { dependencySummary }
+    const usageTargets = await trpcClient.usageTargets.query()
+    return { usageTargets }
   },
-  component: DependenciesPage,
+  component: QueriesPage,
 })
 
-function DependenciesPage() {
-  const { dependencySummary } = Route.useLoaderData()
+function QueriesPage() {
+  const { usageTargets } = Route.useLoaderData()
   const { query, page, pageSize } = Route.useSearch()
   const navigate = Route.useNavigate()
 
-  const filteredDependencies = useMemo(() => {
+  const filteredTargets = useMemo(() => {
     const normalized = query.trim().toLowerCase()
     if (!normalized) {
-      return dependencySummary
+      return usageTargets
     }
-    return dependencySummary.filter((row) =>
-      (row.dependencyName ?? '').toLowerCase().includes(normalized),
+    return usageTargets.filter((row) =>
+      [row.targetTitle, row.targetKey].some((value) =>
+        value.toLowerCase().includes(normalized),
+      ),
     )
-  }, [dependencySummary, query])
+  }, [query, usageTargets])
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredDependencies.length / pageSize),
-  )
+  const totalPages = Math.max(1, Math.ceil(filteredTargets.length / pageSize))
   const currentPage = Math.min(page, totalPages)
   const start = (currentPage - 1) * pageSize
-  const pagedDependencies = filteredDependencies.slice(
-    start,
-    start + pageSize,
-  )
+  const pagedTargets = filteredTargets.slice(start, start + pageSize)
+
   const updateSearch = (
     next: Partial<{ query: string; page: number; pageSize: number }>,
   ) => {
@@ -115,30 +95,28 @@ function DependenciesPage() {
   }
 
   return (
-    <div className="dependencies-page">
-      <header className="dependencies-header">
+    <div className="queries-page">
+      <header className="queries-header">
         <div>
-          <h1>Dependencies</h1>
-          <p>Browse all dependencies across the latest sync run.</p>
+          <h1>Usage Queries</h1>
+          <p>Browse usage query targets across the latest sync run.</p>
         </div>
-        <Link className="dependencies-link" to="/">
+        <Link className="queries-link" to="/">
           Back to dashboard
         </Link>
       </header>
 
-      <div className="dependencies-actions">
-        <label className="dependencies-filter">
+      <div className="queries-actions">
+        <label className="queries-filter">
           <span>Filter</span>
           <input
             type="text"
             value={query}
-            onChange={(event) =>
-              updateSearch({ query: event.target.value, page: 1 })
-            }
-            placeholder="Search dependencies..."
+            onChange={(event) => updateSearch({ query: event.target.value, page: 1 })}
+            placeholder="Search usage targets..."
           />
         </label>
-        <label className="dependencies-filter">
+        <label className="queries-filter">
           <span>Page size</span>
           <select
             value={pageSize}
@@ -158,51 +136,38 @@ function DependenciesPage() {
         </label>
       </div>
 
-      {dependencySummary.length === 0 ? (
-        <p>No dependency data for the latest run.</p>
-      ) : filteredDependencies.length === 0 ? (
-        <p>No dependencies match the current filter.</p>
+      {usageTargets.length === 0 ? (
+        <p>No usage data for the latest run.</p>
+      ) : filteredTargets.length === 0 ? (
+        <p>No usage targets match the current filter.</p>
       ) : (
-        <div className="dependencies-table">
+        <div className="queries-table">
           <table>
             <thead>
               <tr>
-                <th>Dependency</th>
-                <th>Usage</th>
+                <th>Target</th>
               </tr>
             </thead>
             <tbody>
-              {pagedDependencies.map((row) => {
-                const { scope, lib } = splitDependencyName(row.dependencyName)
-                const canLink = Boolean(lib)
-                return (
-                  <tr key={row.dependencyId}>
-                    <td>
-                      {canLink ? (
-                        <Link
-                          to="/dependency"
-                          search={{
-                            scope: scope || undefined,
-                            lib,
-                          }}
-                        >
-                          {row.dependencyName ?? 'Unknown'}
-                        </Link>
-                      ) : (
-                        <span>{row.dependencyName ?? 'Unknown'}</span>
-                      )}
-                    </td>
-                    <td>{row.usageCount}</td>
-                  </tr>
-                )
-              })}
+              {pagedTargets.map((row) => (
+                <tr key={row.targetKey}>
+                  <td>
+                    <Link
+                      to="/queries/$targetKey"
+                      params={{ targetKey: row.targetKey }}
+                    >
+                      {row.targetTitle}
+                    </Link>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
       )}
 
-      {filteredDependencies.length > pageSize ? (
-        <div className="dependencies-pagination">
+      {filteredTargets.length > pageSize ? (
+        <div className="queries-pagination">
           <button
             type="button"
             onClick={() => updateSearch({ page: Math.max(1, currentPage - 1) })}
@@ -215,9 +180,7 @@ function DependenciesPage() {
           </span>
           <button
             type="button"
-            onClick={() =>
-              updateSearch({ page: Math.min(totalPages, currentPage + 1) })
-            }
+            onClick={() => updateSearch({ page: Math.min(totalPages, currentPage + 1) })}
             disabled={currentPage >= totalPages}
           >
             Next

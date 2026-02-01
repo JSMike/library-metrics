@@ -9,13 +9,24 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as QueriesRouteImport } from './routes/queries'
 import { Route as ProjectRouteImport } from './routes/project'
 import { Route as DependencyRouteImport } from './routes/dependency'
 import { Route as DependenciesRouteImport } from './routes/dependencies'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as QueriesTargetKeyRouteImport } from './routes/queries.$targetKey'
+import { Route as QueriesTargetKeySubTargetKeyRouteImport } from './routes/queries.$targetKey.$subTargetKey'
 import { Route as ApiTrpcPathRouteImport } from './routes/api/trpc/$path'
+import { Route as QueriesTargetKeySubTargetKeyQueryKeyRouteImport } from './routes/queries.$targetKey.$subTargetKey.$queryKey'
+import { Route as ProjectUsageTargetKeySubTargetKeyRouteImport } from './routes/project.usage.$targetKey.$subTargetKey'
+import { Route as ProjectUsageTargetKeySubTargetKeyQueryKeyRouteImport } from './routes/project.usage.$targetKey.$subTargetKey.$queryKey'
 
+const QueriesRoute = QueriesRouteImport.update({
+  id: '/queries',
+  path: '/queries',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProjectRoute = ProjectRouteImport.update({
   id: '/project',
   path: '/project',
@@ -41,27 +52,68 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const QueriesTargetKeyRoute = QueriesTargetKeyRouteImport.update({
+  id: '/$targetKey',
+  path: '/$targetKey',
+  getParentRoute: () => QueriesRoute,
+} as any)
+const QueriesTargetKeySubTargetKeyRoute =
+  QueriesTargetKeySubTargetKeyRouteImport.update({
+    id: '/$subTargetKey',
+    path: '/$subTargetKey',
+    getParentRoute: () => QueriesTargetKeyRoute,
+  } as any)
 const ApiTrpcPathRoute = ApiTrpcPathRouteImport.update({
   id: '/api/trpc/$path',
   path: '/api/trpc/$path',
   getParentRoute: () => rootRouteImport,
 } as any)
+const QueriesTargetKeySubTargetKeyQueryKeyRoute =
+  QueriesTargetKeySubTargetKeyQueryKeyRouteImport.update({
+    id: '/$queryKey',
+    path: '/$queryKey',
+    getParentRoute: () => QueriesTargetKeySubTargetKeyRoute,
+  } as any)
+const ProjectUsageTargetKeySubTargetKeyRoute =
+  ProjectUsageTargetKeySubTargetKeyRouteImport.update({
+    id: '/usage/$targetKey/$subTargetKey',
+    path: '/usage/$targetKey/$subTargetKey',
+    getParentRoute: () => ProjectRoute,
+  } as any)
+const ProjectUsageTargetKeySubTargetKeyQueryKeyRoute =
+  ProjectUsageTargetKeySubTargetKeyQueryKeyRouteImport.update({
+    id: '/$queryKey',
+    path: '/$queryKey',
+    getParentRoute: () => ProjectUsageTargetKeySubTargetKeyRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/dependencies': typeof DependenciesRoute
   '/dependency': typeof DependencyRoute
-  '/project': typeof ProjectRoute
+  '/project': typeof ProjectRouteWithChildren
+  '/queries': typeof QueriesRouteWithChildren
+  '/queries/$targetKey': typeof QueriesTargetKeyRouteWithChildren
   '/api/trpc/$path': typeof ApiTrpcPathRoute
+  '/queries/$targetKey/$subTargetKey': typeof QueriesTargetKeySubTargetKeyRouteWithChildren
+  '/project/usage/$targetKey/$subTargetKey': typeof ProjectUsageTargetKeySubTargetKeyRouteWithChildren
+  '/queries/$targetKey/$subTargetKey/$queryKey': typeof QueriesTargetKeySubTargetKeyQueryKeyRoute
+  '/project/usage/$targetKey/$subTargetKey/$queryKey': typeof ProjectUsageTargetKeySubTargetKeyQueryKeyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/dependencies': typeof DependenciesRoute
   '/dependency': typeof DependencyRoute
-  '/project': typeof ProjectRoute
+  '/project': typeof ProjectRouteWithChildren
+  '/queries': typeof QueriesRouteWithChildren
+  '/queries/$targetKey': typeof QueriesTargetKeyRouteWithChildren
   '/api/trpc/$path': typeof ApiTrpcPathRoute
+  '/queries/$targetKey/$subTargetKey': typeof QueriesTargetKeySubTargetKeyRouteWithChildren
+  '/project/usage/$targetKey/$subTargetKey': typeof ProjectUsageTargetKeySubTargetKeyRouteWithChildren
+  '/queries/$targetKey/$subTargetKey/$queryKey': typeof QueriesTargetKeySubTargetKeyQueryKeyRoute
+  '/project/usage/$targetKey/$subTargetKey/$queryKey': typeof ProjectUsageTargetKeySubTargetKeyQueryKeyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -69,8 +121,14 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/dependencies': typeof DependenciesRoute
   '/dependency': typeof DependencyRoute
-  '/project': typeof ProjectRoute
+  '/project': typeof ProjectRouteWithChildren
+  '/queries': typeof QueriesRouteWithChildren
+  '/queries/$targetKey': typeof QueriesTargetKeyRouteWithChildren
   '/api/trpc/$path': typeof ApiTrpcPathRoute
+  '/queries/$targetKey/$subTargetKey': typeof QueriesTargetKeySubTargetKeyRouteWithChildren
+  '/project/usage/$targetKey/$subTargetKey': typeof ProjectUsageTargetKeySubTargetKeyRouteWithChildren
+  '/queries/$targetKey/$subTargetKey/$queryKey': typeof QueriesTargetKeySubTargetKeyQueryKeyRoute
+  '/project/usage/$targetKey/$subTargetKey/$queryKey': typeof ProjectUsageTargetKeySubTargetKeyQueryKeyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -80,7 +138,13 @@ export interface FileRouteTypes {
     | '/dependencies'
     | '/dependency'
     | '/project'
+    | '/queries'
+    | '/queries/$targetKey'
     | '/api/trpc/$path'
+    | '/queries/$targetKey/$subTargetKey'
+    | '/project/usage/$targetKey/$subTargetKey'
+    | '/queries/$targetKey/$subTargetKey/$queryKey'
+    | '/project/usage/$targetKey/$subTargetKey/$queryKey'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -88,7 +152,13 @@ export interface FileRouteTypes {
     | '/dependencies'
     | '/dependency'
     | '/project'
+    | '/queries'
+    | '/queries/$targetKey'
     | '/api/trpc/$path'
+    | '/queries/$targetKey/$subTargetKey'
+    | '/project/usage/$targetKey/$subTargetKey'
+    | '/queries/$targetKey/$subTargetKey/$queryKey'
+    | '/project/usage/$targetKey/$subTargetKey/$queryKey'
   id:
     | '__root__'
     | '/'
@@ -96,7 +166,13 @@ export interface FileRouteTypes {
     | '/dependencies'
     | '/dependency'
     | '/project'
+    | '/queries'
+    | '/queries/$targetKey'
     | '/api/trpc/$path'
+    | '/queries/$targetKey/$subTargetKey'
+    | '/project/usage/$targetKey/$subTargetKey'
+    | '/queries/$targetKey/$subTargetKey/$queryKey'
+    | '/project/usage/$targetKey/$subTargetKey/$queryKey'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -104,12 +180,20 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   DependenciesRoute: typeof DependenciesRoute
   DependencyRoute: typeof DependencyRoute
-  ProjectRoute: typeof ProjectRoute
+  ProjectRoute: typeof ProjectRouteWithChildren
+  QueriesRoute: typeof QueriesRouteWithChildren
   ApiTrpcPathRoute: typeof ApiTrpcPathRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/queries': {
+      id: '/queries'
+      path: '/queries'
+      fullPath: '/queries'
+      preLoaderRoute: typeof QueriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/project': {
       id: '/project'
       path: '/project'
@@ -145,6 +229,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/queries/$targetKey': {
+      id: '/queries/$targetKey'
+      path: '/$targetKey'
+      fullPath: '/queries/$targetKey'
+      preLoaderRoute: typeof QueriesTargetKeyRouteImport
+      parentRoute: typeof QueriesRoute
+    }
+    '/queries/$targetKey/$subTargetKey': {
+      id: '/queries/$targetKey/$subTargetKey'
+      path: '/$subTargetKey'
+      fullPath: '/queries/$targetKey/$subTargetKey'
+      preLoaderRoute: typeof QueriesTargetKeySubTargetKeyRouteImport
+      parentRoute: typeof QueriesTargetKeyRoute
+    }
     '/api/trpc/$path': {
       id: '/api/trpc/$path'
       path: '/api/trpc/$path'
@@ -152,15 +250,102 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTrpcPathRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/queries/$targetKey/$subTargetKey/$queryKey': {
+      id: '/queries/$targetKey/$subTargetKey/$queryKey'
+      path: '/$queryKey'
+      fullPath: '/queries/$targetKey/$subTargetKey/$queryKey'
+      preLoaderRoute: typeof QueriesTargetKeySubTargetKeyQueryKeyRouteImport
+      parentRoute: typeof QueriesTargetKeySubTargetKeyRoute
+    }
+    '/project/usage/$targetKey/$subTargetKey': {
+      id: '/project/usage/$targetKey/$subTargetKey'
+      path: '/usage/$targetKey/$subTargetKey'
+      fullPath: '/project/usage/$targetKey/$subTargetKey'
+      preLoaderRoute: typeof ProjectUsageTargetKeySubTargetKeyRouteImport
+      parentRoute: typeof ProjectRoute
+    }
+    '/project/usage/$targetKey/$subTargetKey/$queryKey': {
+      id: '/project/usage/$targetKey/$subTargetKey/$queryKey'
+      path: '/$queryKey'
+      fullPath: '/project/usage/$targetKey/$subTargetKey/$queryKey'
+      preLoaderRoute: typeof ProjectUsageTargetKeySubTargetKeyQueryKeyRouteImport
+      parentRoute: typeof ProjectUsageTargetKeySubTargetKeyRoute
+    }
   }
 }
+
+interface ProjectUsageTargetKeySubTargetKeyRouteChildren {
+  ProjectUsageTargetKeySubTargetKeyQueryKeyRoute: typeof ProjectUsageTargetKeySubTargetKeyQueryKeyRoute
+}
+
+const ProjectUsageTargetKeySubTargetKeyRouteChildren: ProjectUsageTargetKeySubTargetKeyRouteChildren =
+  {
+    ProjectUsageTargetKeySubTargetKeyQueryKeyRoute:
+      ProjectUsageTargetKeySubTargetKeyQueryKeyRoute,
+  }
+
+const ProjectUsageTargetKeySubTargetKeyRouteWithChildren =
+  ProjectUsageTargetKeySubTargetKeyRoute._addFileChildren(
+    ProjectUsageTargetKeySubTargetKeyRouteChildren,
+  )
+
+interface ProjectRouteChildren {
+  ProjectUsageTargetKeySubTargetKeyRoute: typeof ProjectUsageTargetKeySubTargetKeyRouteWithChildren
+}
+
+const ProjectRouteChildren: ProjectRouteChildren = {
+  ProjectUsageTargetKeySubTargetKeyRoute:
+    ProjectUsageTargetKeySubTargetKeyRouteWithChildren,
+}
+
+const ProjectRouteWithChildren =
+  ProjectRoute._addFileChildren(ProjectRouteChildren)
+
+interface QueriesTargetKeySubTargetKeyRouteChildren {
+  QueriesTargetKeySubTargetKeyQueryKeyRoute: typeof QueriesTargetKeySubTargetKeyQueryKeyRoute
+}
+
+const QueriesTargetKeySubTargetKeyRouteChildren: QueriesTargetKeySubTargetKeyRouteChildren =
+  {
+    QueriesTargetKeySubTargetKeyQueryKeyRoute:
+      QueriesTargetKeySubTargetKeyQueryKeyRoute,
+  }
+
+const QueriesTargetKeySubTargetKeyRouteWithChildren =
+  QueriesTargetKeySubTargetKeyRoute._addFileChildren(
+    QueriesTargetKeySubTargetKeyRouteChildren,
+  )
+
+interface QueriesTargetKeyRouteChildren {
+  QueriesTargetKeySubTargetKeyRoute: typeof QueriesTargetKeySubTargetKeyRouteWithChildren
+}
+
+const QueriesTargetKeyRouteChildren: QueriesTargetKeyRouteChildren = {
+  QueriesTargetKeySubTargetKeyRoute:
+    QueriesTargetKeySubTargetKeyRouteWithChildren,
+}
+
+const QueriesTargetKeyRouteWithChildren =
+  QueriesTargetKeyRoute._addFileChildren(QueriesTargetKeyRouteChildren)
+
+interface QueriesRouteChildren {
+  QueriesTargetKeyRoute: typeof QueriesTargetKeyRouteWithChildren
+}
+
+const QueriesRouteChildren: QueriesRouteChildren = {
+  QueriesTargetKeyRoute: QueriesTargetKeyRouteWithChildren,
+}
+
+const QueriesRouteWithChildren =
+  QueriesRoute._addFileChildren(QueriesRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
   DependenciesRoute: DependenciesRoute,
   DependencyRoute: DependencyRoute,
-  ProjectRoute: ProjectRoute,
+  ProjectRoute: ProjectRouteWithChildren,
+  QueriesRoute: QueriesRouteWithChildren,
   ApiTrpcPathRoute: ApiTrpcPathRoute,
 }
 export const routeTree = rootRouteImport

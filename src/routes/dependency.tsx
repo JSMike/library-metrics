@@ -1,6 +1,6 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { getDependencyDetail } from '@/server/reporting'
-import './dependencies.css'
+import './dependencies.scss'
 
 const SEARCH_MAX_LENGTH = 200
 

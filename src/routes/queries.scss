@@ -1,0 +1,145 @@
+.queries-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 24px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.queries-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+
+  h1 {
+    margin-bottom: 8px;
+  }
+}
+
+.queries-link {
+  font-weight: 600;
+  text-decoration: none;
+  color: #1f4b99;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.queries-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.queries-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+
+  input,
+  select {
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #c9ced6;
+    min-width: 220px;
+  }
+}
+
+.queries-table {
+  overflow-x: auto;
+  border: 1px solid #e3e5e8;
+  border-radius: 12px;
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 520px;
+  }
+
+  th,
+  td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid #e3e5e8;
+  }
+
+  th {
+    background: #f4f5f7;
+    font-weight: 600;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+}
+
+.queries-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 12px 4px 0;
+
+  button {
+    border: 1px solid #c9ced6;
+    background: #fff;
+    border-radius: 8px;
+    padding: 6px 12px;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+  }
+}
+
+.queries-sections {
+  display: grid;
+  gap: 24px;
+}
+
+.queries-section {
+  display: grid;
+  gap: 12px;
+}
+
+.queries-section-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.queries-meta {
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.queries-muted {
+  color: #6b7280;
+}
+
+.queries-links {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+
+  a {
+    font-weight: 600;
+    text-decoration: none;
+    color: #1f4b99;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}

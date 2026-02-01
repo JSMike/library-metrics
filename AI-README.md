@@ -68,6 +68,7 @@ TanStack Start app running on Bun, with tRPC and Drizzle (bun:sqlite) for a loca
 ### Database
 
 - Use Drizzle with `bun:sqlite` for the local DB.
+- Run migrations via the Bun migrator: `bun run db:migrate`.
 - Prefer normalized core tables with JSON payload columns for raw API responses.
 - SQLite file is stored in `./data/gitlab-metrics.sqlite` by default and tracked in git.
 - Use `DB_FILE_NAME` to override the path (see `.env.example`).
@@ -80,6 +81,7 @@ bun run build
 bun run preview
 bun run test
 bun run sync:gitlab
+bun run db:migrate
 bun run db:view
 ```
 

@@ -21,6 +21,7 @@ Generated: 2026-02-01
 | ID | Title | Complexity | Priority | Blocked By |
 | --- | --- | --- | --- | --- |
 | [GLM-9](./GLM-9/issue.md) | Add archive-based usage scanning to reduce API calls | high | low | |
+| [GLM-10](./GLM-10/issue.md) | Add database purge/reset for fresh sync | medium | medium | |
 
 ### Review
 
@@ -37,3 +38,4 @@ Generated: 2026-02-01
 | [GLM-4](./GLM-4/issue.md) | Revamp usage queries reporting and routing | 2026-02-01 |
 | [GLM-5](./GLM-5/issue.md) | Add projects list page and header navigation | 2026-02-01 |
 | [GLM-7](./GLM-7/issue.md) | Link parent references in usage report headers | 2026-02-01 |
+| [GLM-11](./GLM-11/issue.md) | Replace drizzle-kit migrations with Bun-based migrator | 2026-02-01 |

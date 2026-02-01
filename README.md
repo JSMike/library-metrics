@@ -25,6 +25,32 @@ bun --bun run sync:gitlab -- --force
 
 Tune GitLab request throttling and timeouts via `.env` (see `.env.example`).
 
+### Database Migrations
+
+Migrations run with a Bun-based migrator (no `better-sqlite3` required):
+
+```bash
+bun run db:migrate
+```
+
+### Reset the Database
+
+To start fresh, delete the SQLite file and re-run migrations:
+
+```bash
+rm ./data/gitlab-metrics.sqlite
+# If SQLite left WAL/SHM files behind, remove them too:
+rm ./data/gitlab-metrics.sqlite-wal ./data/gitlab-metrics.sqlite-shm
+
+bun run db:migrate
+```
+
+Then run a forced sync:
+
+```bash
+bun --bun run sync:gitlab -- --force
+```
+
 ### Sync Debugging
 
 Enable debug logs and scan progress:

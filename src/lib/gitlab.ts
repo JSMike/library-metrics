@@ -8,6 +8,8 @@ export type GitLabConfig = {
   concurrency: number;
   delayMs: number;
   timeoutMs: number;
+  retryCount: number;
+  retryDelayMs: number;
 };
 
 export type GitLabGroupResponse = {
@@ -35,6 +37,18 @@ export type GitLabCommitResponse = {
 };
 
 const DEFAULT_API_VERSION = "v4";
+const DEFAULT_GLOBAL_RATE_LIMIT = 2000;
+const DEFAULT_GLOBAL_WINDOW_MS = 10 * 60 * 1000;
+const DEFAULT_SEARCH_RATE_LIMIT = 30;
+const DEFAULT_SEARCH_WINDOW_MS = 60 * 1000;
+const DEFAULT_PROJECT_RATE_LIMIT = 400;
+const DEFAULT_PROJECT_WINDOW_MS = 60 * 1000;
+const DEFAULT_GROUP_RATE_LIMIT = 200;
+const DEFAULT_GROUP_WINDOW_MS = 60 * 1000;
+const DEFAULT_GROUP_PROJECTS_RATE_LIMIT = 600;
+const DEFAULT_GROUP_PROJECTS_WINDOW_MS = 60 * 1000;
+const DEFAULT_ARCHIVE_RATE_LIMIT = 5;
+const DEFAULT_ARCHIVE_WINDOW_MS = 60 * 1000;
 
 const getEnv = (key: string, fallback: string) => {
   const value = process.env[key];
@@ -65,20 +79,265 @@ export const getGitLabConfig = (): GitLabConfig => {
     groupPath: requireEnv("GITLAB_GROUP_PATH"),
     apiVersion: getEnv("GITLAB_API_VERSION", DEFAULT_API_VERSION),
     concurrency: getNumberEnv("GITLAB_REQUEST_CONCURRENCY", 3),
-    delayMs: getNumberEnv("GITLAB_REQUEST_DELAY_MS", 250),
+    delayMs: getNumberEnv("GITLAB_REQUEST_DELAY_MS", 0),
     timeoutMs: getNumberEnv("GITLAB_REQUEST_TIMEOUT_MS", 30000),
+    retryCount: Math.max(0, getNumberEnv("GITLAB_REQUEST_RETRIES", 1)),
+    retryDelayMs: Math.max(0, getNumberEnv("GITLAB_REQUEST_RETRY_DELAY_MS", 2000)),
   };
 };
 
 const sleep = (ms: number) =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
-export const apiFetch = (
+type RateLimitRule = {
+  key: string;
+  limit: number;
+  windowMs: number;
+  minSpacingMs?: number;
+  match: (path: string) => boolean;
+};
+
+type RateLimitBucket = {
+  key: string;
+  limit: number;
+  windowMs: number;
+  minSpacingMs: number;
+  lastRequestAt: number;
+  remaining: number | null;
+  resetAt: number | null;
+  windowStart: number;
+  windowCount: number;
+};
+
+const buildMinSpacing = (limit: number, windowMs: number) =>
+  Math.max(1, Math.ceil(windowMs / limit));
+
+const createBucket = (rule: RateLimitRule): RateLimitBucket => ({
+  key: rule.key,
+  limit: rule.limit,
+  windowMs: rule.windowMs,
+  minSpacingMs:
+    rule.minSpacingMs ?? buildMinSpacing(rule.limit, rule.windowMs),
+  lastRequestAt: 0,
+  remaining: null,
+  resetAt: null,
+  windowStart: 0,
+  windowCount: 0,
+});
+
+export class RateLimiter {
+  private readonly globalKey = "global";
+  private readonly rules: RateLimitRule[];
+  private readonly buckets = new Map<string, RateLimitBucket>();
+  private readonly chains = new Map<string, Promise<void>>();
+
+  constructor(
+    rules: RateLimitRule[],
+    options: { globalMinSpacingMs?: number } = {},
+  ) {
+    this.rules = rules;
+    for (const rule of rules) {
+      this.buckets.set(rule.key, createBucket(rule));
+    }
+    if (!this.buckets.has(this.globalKey)) {
+      this.buckets.set(
+        this.globalKey,
+        createBucket({
+          key: this.globalKey,
+          limit: DEFAULT_GLOBAL_RATE_LIMIT,
+          windowMs: DEFAULT_GLOBAL_WINDOW_MS,
+          minSpacingMs: options.globalMinSpacingMs,
+          match: () => true,
+        }),
+      );
+    }
+  }
+
+  async wait(path: string) {
+    const keys = this.getKeysForPath(path);
+    for (const key of keys) {
+      await this.waitForKey(key);
+    }
+  }
+
+  updateFromHeaders(path: string, response: Response) {
+    const limitHeader = Number(response.headers.get("RateLimit-Limit"));
+    const remainingHeader = Number(response.headers.get("RateLimit-Remaining"));
+    const resetHeader = Number(response.headers.get("RateLimit-Reset"));
+    const limit = Number.isFinite(limitHeader) && limitHeader > 0 ? limitHeader : null;
+    const remaining = Number.isFinite(remainingHeader) ? remainingHeader : null;
+    const resetAt =
+      Number.isFinite(resetHeader) && resetHeader > 0
+        ? resetHeader * 1000
+        : null;
+    if (!limit && remaining === null && !resetAt) {
+      return;
+    }
+
+    const key = this.getRuleForPath(path)?.key ?? this.globalKey;
+    const bucket = this.buckets.get(key);
+    if (!bucket) {
+      return;
+    }
+
+    if (limit) {
+      bucket.limit = limit;
+      bucket.minSpacingMs = buildMinSpacing(bucket.limit, bucket.windowMs);
+    }
+    if (remaining !== null) {
+      bucket.remaining = remaining;
+    }
+    if (resetAt) {
+      bucket.resetAt = resetAt;
+    }
+  }
+
+  private getRuleForPath(path: string) {
+    return this.rules.find((rule) => rule.match(path)) ?? null;
+  }
+
+  private getKeysForPath(path: string) {
+    const keys = new Set<string>([this.globalKey]);
+    const rule = this.getRuleForPath(path);
+    if (rule && rule.key !== this.globalKey) {
+      keys.add(rule.key);
+    }
+    return Array.from(keys);
+  }
+
+  private getBucket(key: string) {
+    const existing = this.buckets.get(key);
+    if (existing) {
+      return existing;
+    }
+    const fallback: RateLimitBucket = {
+      key,
+      limit: DEFAULT_GLOBAL_RATE_LIMIT,
+      windowMs: DEFAULT_GLOBAL_WINDOW_MS,
+      minSpacingMs: buildMinSpacing(
+        DEFAULT_GLOBAL_RATE_LIMIT,
+        DEFAULT_GLOBAL_WINDOW_MS,
+      ),
+      lastRequestAt: 0,
+      remaining: null,
+      resetAt: null,
+      windowStart: 0,
+      windowCount: 0,
+    };
+    this.buckets.set(key, fallback);
+    return fallback;
+  }
+
+  private async waitForKey(key: string) {
+    const previous = this.chains.get(key) ?? Promise.resolve();
+    const current = previous.then(async () => {
+      const bucket = this.getBucket(key);
+      await this.applyDelay(bucket);
+    });
+    this.chains.set(key, current.catch(() => {}));
+    await current;
+  }
+
+  private async applyDelay(bucket: RateLimitBucket) {
+    const now = Date.now();
+    if (bucket.resetAt && now >= bucket.resetAt) {
+      bucket.resetAt = null;
+      bucket.remaining = null;
+    }
+
+    if (!bucket.resetAt || bucket.remaining === null) {
+      if (!bucket.windowStart || now - bucket.windowStart >= bucket.windowMs) {
+        bucket.windowStart = now;
+        bucket.windowCount = 0;
+      }
+      if (bucket.windowCount >= bucket.limit) {
+        const waitMs = bucket.windowStart + bucket.windowMs - now;
+        if (waitMs > 0) {
+          await sleep(waitMs);
+        }
+        bucket.windowStart = Date.now();
+        bucket.windowCount = 0;
+      }
+    }
+
+    if (bucket.resetAt && bucket.remaining !== null && bucket.remaining <= 0) {
+      const waitMs = bucket.resetAt - now;
+      if (waitMs > 0) {
+        await sleep(waitMs);
+      }
+      bucket.resetAt = null;
+      bucket.remaining = null;
+      bucket.windowStart = Date.now();
+      bucket.windowCount = 0;
+    }
+
+    const currentTime = Date.now();
+    let spacingMs = bucket.minSpacingMs;
+
+    if (bucket.resetAt && bucket.remaining !== null && bucket.remaining > 0) {
+      const windowRemaining = Math.max(0, bucket.resetAt - currentTime);
+      const headerSpacing = Math.ceil(windowRemaining / bucket.remaining);
+      spacingMs = Math.max(spacingMs, headerSpacing);
+    }
+
+    const sinceLast = currentTime - bucket.lastRequestAt;
+    if (sinceLast < spacingMs) {
+      await sleep(spacingMs - sinceLast);
+    }
+    bucket.lastRequestAt = Date.now();
+    if (bucket.remaining !== null) {
+      bucket.remaining = Math.max(0, bucket.remaining - 1);
+    }
+    bucket.windowCount += 1;
+  }
+}
+
+export const createRateLimiter = () =>
+  new RateLimiter(
+    [
+      {
+        key: "repo-archive",
+        limit: DEFAULT_ARCHIVE_RATE_LIMIT,
+        windowMs: DEFAULT_ARCHIVE_WINDOW_MS,
+        match: (path) => path.includes("/repository/archive"),
+      },
+      {
+        key: "search",
+        limit: DEFAULT_SEARCH_RATE_LIMIT,
+        windowMs: DEFAULT_SEARCH_WINDOW_MS,
+        match: (path) => path.includes("/search"),
+      },
+      {
+        key: "group-projects",
+        limit: DEFAULT_GROUP_PROJECTS_RATE_LIMIT,
+        windowMs: DEFAULT_GROUP_PROJECTS_WINDOW_MS,
+        match: (path) =>
+          path.startsWith("/groups/") && path.includes("/projects"),
+      },
+      {
+        key: "group",
+        limit: DEFAULT_GROUP_RATE_LIMIT,
+        windowMs: DEFAULT_GROUP_WINDOW_MS,
+        match: (path) => path.startsWith("/groups/"),
+      },
+      {
+        key: "project",
+        limit: DEFAULT_PROJECT_RATE_LIMIT,
+        windowMs: DEFAULT_PROJECT_WINDOW_MS,
+        match: (path) => path.startsWith("/projects/"),
+      },
+    ],
+    { globalMinSpacingMs: 0 },
+  );
+
+export const apiFetch = async (
   config: GitLabConfig,
   throttler: Throttler,
+  rateLimiter: RateLimiter,
   path: string,
   init?: RequestInit,
 ): Promise<Response> => {
+  await rateLimiter.wait(path);
   return throttler.run(async () => {
     const url = new URL(`/api/${config.apiVersion}${path}`, config.baseUrl);
     const headers = new Headers(init?.headers ?? {});
@@ -99,18 +358,44 @@ export const apiFetch = (
   });
 };
 
+const isRetryableError = (error: unknown) => {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+  const name = (error as { name?: string }).name ?? "";
+  return name === "AbortError" || name === "TimeoutError";
+};
+
 export const fetchJson = async <T>(
   config: GitLabConfig,
   throttler: Throttler,
+  rateLimiter: RateLimiter,
   path: string,
   init?: RequestInit,
-  retries = 2,
+  retries = config.retryCount,
 ): Promise<{ data: T; response: Response }> => {
-  for (let attempt = 0; attempt <= retries; attempt += 1) {
-    const response = await apiFetch(config, throttler, path, init);
+  const maxRetries = Math.max(0, retries);
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+    let response: Response;
+    try {
+      response = await apiFetch(config, throttler, rateLimiter, path, init);
+    } catch (error) {
+      if (isRetryableError(error) && attempt < maxRetries) {
+        await sleep(config.retryDelayMs);
+        continue;
+      }
+      throw error;
+    }
+    rateLimiter.updateFromHeaders(path, response);
     if (response.status === 429) {
       const retryAfter = Number(response.headers.get("retry-after") ?? 0);
-      const waitMs = retryAfter > 0 ? retryAfter * 1000 : 500 * (attempt + 1);
+      const resetAt = Number(response.headers.get("RateLimit-Reset") ?? 0) * 1000;
+      const waitMs =
+        retryAfter > 0
+          ? retryAfter * 1000
+          : resetAt > Date.now()
+            ? resetAt - Date.now()
+            : 500 * (attempt + 1);
       await sleep(waitMs);
       continue;
     }
@@ -132,6 +417,7 @@ export const fetchJson = async <T>(
 export const fetchAllPages = async <T>(
   config: GitLabConfig,
   throttler: Throttler,
+  rateLimiter: RateLimiter,
   path: string,
 ): Promise<T[]> => {
   const results: T[] = [];
@@ -143,6 +429,7 @@ export const fetchAllPages = async <T>(
     const { data, response } = await fetchJson<T[]>(
       config,
       throttler,
+      rateLimiter,
       pagePath,
     );
     results.push(...data);

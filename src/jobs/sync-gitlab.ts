@@ -24,6 +24,8 @@ import {
   type GitLabCommitResponse,
   type GitLabGroupResponse,
   type GitLabProjectResponse,
+  createRateLimiter,
+  type RateLimiter,
 } from "../lib/gitlab";
 import { Throttler } from "../lib/throttle";
 import { usageQueries, usageTargets } from "../lib/usage-queries";
@@ -301,6 +303,7 @@ const resolveLockedVersion = (
 const getLockfileCommitDate = async (
   config: ReturnType<typeof getGitLabConfig>,
   throttler: Throttler,
+  rateLimiter: RateLimiter,
   projectId: number,
   ref: string | null,
   filePath: string,
@@ -318,6 +321,7 @@ const getLockfileCommitDate = async (
   const { data } = await fetchJson<GitLabCommitResponse[]>(
     config,
     throttler,
+    rateLimiter,
     `/projects/${projectId}/repository/commits?path=${encodeURIComponent(
       filePath,
     )}&ref_name=${encodeURIComponent(ref)}&per_page=1`,
@@ -332,6 +336,7 @@ const getLockfileCommitDate = async (
 const selectLatestLockfilePath = async (
   config: ReturnType<typeof getGitLabConfig>,
   throttler: Throttler,
+  rateLimiter: RateLimiter,
   projectId: number,
   ref: string | null,
   candidates: string[],
@@ -347,6 +352,7 @@ const selectLatestLockfilePath = async (
   let bestDate = await getLockfileCommitDate(
     config,
     throttler,
+    rateLimiter,
     projectId,
     ref,
     bestPath,
@@ -356,6 +362,7 @@ const selectLatestLockfilePath = async (
     const date = await getLockfileCommitDate(
       config,
       throttler,
+      rateLimiter,
       projectId,
       ref,
       path,
@@ -503,6 +510,7 @@ const ensureProject = async (
 const fetchLatestCommit = async (
   config: ReturnType<typeof getGitLabConfig>,
   throttler: Throttler,
+  rateLimiter: RateLimiter,
   projectId: number,
   ref: string | null,
 ): Promise<GitLabCommitResponse | null> => {
@@ -513,6 +521,7 @@ const fetchLatestCommit = async (
   const { data } = await fetchJson<GitLabCommitResponse[]>(
     config,
     throttler,
+    rateLimiter,
     `/projects/${projectId}/repository/commits?ref_name=${encodeURIComponent(ref)}&per_page=1`,
   );
 
@@ -582,6 +591,7 @@ const getDependencyId = async (
 const fetchRepositoryTree = async (
   config: ReturnType<typeof getGitLabConfig>,
   throttler: Throttler,
+  rateLimiter: RateLimiter,
   projectId: number,
   ref: string | null,
 ) => {
@@ -591,6 +601,7 @@ const fetchRepositoryTree = async (
   return fetchAllPages<GitLabTreeEntry>(
     config,
     throttler,
+    rateLimiter,
     `/projects/${projectId}/repository/tree?ref=${encodeURIComponent(ref)}&recursive=true`,
   );
 };
@@ -598,6 +609,7 @@ const fetchRepositoryTree = async (
 const fetchFile = async (
   config: ReturnType<typeof getGitLabConfig>,
   throttler: Throttler,
+  rateLimiter: RateLimiter,
   projectId: number,
   ref: string | null,
   filePath: string,
@@ -609,6 +621,7 @@ const fetchFile = async (
   const { data } = await fetchJson<GitLabFileResponse>(
     config,
     throttler,
+    rateLimiter,
     `/projects/${projectId}/repository/files/${encodedPath}?ref=${encodeURIComponent(ref)}`,
   );
   const isBinaryLock = filePath.endsWith(".lockb");
@@ -711,6 +724,7 @@ const runSync = async () => {
     concurrency: config.concurrency,
     minDelayMs: config.delayMs,
   });
+  const rateLimiter = createRateLimiter();
   const runId = await createSyncRun("manual run");
   const dependencyMap = await loadDependencyMap();
   let hadErrors = false;
@@ -719,6 +733,7 @@ const runSync = async () => {
     const { data: groupInfo } = await fetchJson<GitLabGroupResponse>(
       config,
       throttler,
+      rateLimiter,
       `/groups/${encodeURIComponent(config.groupPath)}`,
     );
 
@@ -727,6 +742,7 @@ const runSync = async () => {
     const projects = await fetchAllPages<GitLabProjectResponse>(
       config,
       throttler,
+      rateLimiter,
       `/groups/${groupInfo.id}/projects?include_subgroups=true`,
     );
     const totalProjects = projects.length;
@@ -752,6 +768,7 @@ const runSync = async () => {
         const latestCommit = await fetchLatestCommit(
           config,
           throttler,
+          rateLimiter,
           projectInfo.id,
           projectInfo.default_branch,
         );
@@ -803,6 +820,7 @@ const runSync = async () => {
         const treeEntries = await fetchRepositoryTree(
           config,
           throttler,
+          rateLimiter,
           projectInfo.id,
           projectInfo.default_branch,
         );
@@ -867,6 +885,7 @@ const runSync = async () => {
           const file = await fetchFile(
             config,
             throttler,
+            rateLimiter,
             projectInfo.id,
             projectInfo.default_branch,
             path,
@@ -897,6 +916,7 @@ const runSync = async () => {
           const pkgFile = await fetchFile(
             config,
             throttler,
+            rateLimiter,
             projectInfo.id,
             projectInfo.default_branch,
             packagePath,
@@ -934,6 +954,7 @@ const runSync = async () => {
           const lockPath = await selectLatestLockfilePath(
             config,
             throttler,
+            rateLimiter,
             projectInfo.id,
             projectInfo.default_branch,
             lockCandidates,
@@ -1037,6 +1058,7 @@ const runSync = async () => {
             const file = await fetchFile(
               config,
               throttler,
+              rateLimiter,
               projectInfo.id,
               projectInfo.default_branch,
               filePath,

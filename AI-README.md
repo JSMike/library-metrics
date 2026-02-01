@@ -31,7 +31,7 @@ TanStack Start app running on Bun, with tRPC and Drizzle (bun:sqlite) for a loca
 
 - Sync flags: `--force` / `SYNC_FORCE=1` bypass unchanged-SHA skips; `SYNC_DEBUG=1` enables stage logs; `SYNC_VERBOSE=1` or `--verbose` logs scan progress every 10 files (debug default is every 100 files).
 - Forced syncs can take minutes due to full tree + per-file usage scans (not a hang if logs advance).
-- GitLab request tuning via `.env`: `GITLAB_REQUEST_CONCURRENCY`, `GITLAB_REQUEST_DELAY_MS`, `GITLAB_REQUEST_TIMEOUT_MS`.
+- GitLab request tuning via `.env`: `GITLAB_REQUEST_CONCURRENCY`, `GITLAB_REQUEST_DELAY_MS`, `GITLAB_REQUEST_TIMEOUT_MS`, `GITLAB_REQUEST_RETRIES`, `GITLAB_REQUEST_RETRY_DELAY_MS`.
 - Lockfiles are fetched but not stored; resolved versions are computed at sync and stored in `lock_dependency_snapshot`. Missing lockfile entries fall back to a stripped package.json version spec.
 - Monorepos: multiple `package.json` files are stored per project path.
 - Usage queries live in `src/lib/usage-queries.ts` and are stored in `usage_result` with target/sub-target/query keys.
@@ -45,15 +45,17 @@ TanStack Start app running on Bun, with tRPC and Drizzle (bun:sqlite) for a loca
 - `GITLAB_BASE_URL=https://gitlab.com`
 - `GITLAB_API_VERSION=v4`
 - `GITLAB_REQUEST_CONCURRENCY=3`
-- `GITLAB_REQUEST_DELAY_MS=250`
+- `GITLAB_REQUEST_DELAY_MS=0`
 - `GITLAB_REQUEST_TIMEOUT_MS=30000`
+- `GITLAB_REQUEST_RETRIES=1`
+- `GITLAB_REQUEST_RETRY_DELAY_MS=2000`
 
 ### Sync & Logging Knobs
 
 - Force full resync: `--force` / `SYNC_FORCE=1`
 - Enable debug stages: `SYNC_DEBUG=1`
 - Increase scan progress logging: `--verbose` / `SYNC_VERBOSE=1` (every 10 files; debug default is every 100)
-- Tune API pacing/timeouts: `GITLAB_REQUEST_CONCURRENCY`, `GITLAB_REQUEST_DELAY_MS`, `GITLAB_REQUEST_TIMEOUT_MS`
+- Tune API pacing/timeouts: `GITLAB_REQUEST_CONCURRENCY`, `GITLAB_REQUEST_DELAY_MS`, `GITLAB_REQUEST_TIMEOUT_MS`, `GITLAB_REQUEST_RETRIES`, `GITLAB_REQUEST_RETRY_DELAY_MS`
 
 ### Suggested Structure
 

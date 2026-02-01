@@ -9,6 +9,7 @@ Generated: 2026-02-01
 | ID | Title | Complexity | Blocked By |
 | --- | --- | --- | --- |
 | [GLM-6](./GLM-6/issue.md) | Make /projects search optional for header link | low | |
+| [GLM-8](./GLM-8/issue.md) | Optimize GitLab sync throttling and rate-limit handling | high | |
 
 ### Ready
 
@@ -19,6 +20,7 @@ Generated: 2026-02-01
 
 | ID | Title | Complexity | Priority | Blocked By |
 | --- | --- | --- | --- | --- |
+| [GLM-9](./GLM-9/issue.md) | Add archive-based usage scanning to reduce API calls | high | low | |
 
 ### Review
 

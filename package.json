@@ -13,8 +13,8 @@
     "db:view:install:linux": "sudo apt-get install -y pipx && pipx ensurepath && pipx install datasette",
     "db:view:install:mac": "brew install pipx && pipx ensurepath && pipx install datasette",
     "db:view": "datasette ./data/gitlab-metrics.sqlite --host 127.0.0.1 --port 8001",
-    "sync:gitlab": "bun --bun run src/jobs/sync-gitlab.ts",
-    "sync:gitlab:force": "bun --bun run src/jobs/sync-gitlab.ts --force",
+    "sync:gitlab": "bun --bun run src/jobs/sync-gitlab.ts --verbose",
+    "sync:gitlab:force": "bun --bun run src/jobs/sync-gitlab.ts --force --verbose",
     "cloc": "bunx --bun cloc --exclude-dir=node_modules,dist,.codex,.nx,.vscode --exclude-ext=yaml,json,svg,md --vcs git ."
   },
   "dependencies": {

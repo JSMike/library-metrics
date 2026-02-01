@@ -18,7 +18,6 @@ Generated: 2026-02-01
 
 | ID | Title | Complexity | Priority | Blocked By |
 | --- | --- | --- | --- | --- |
-| [GLM-2](./GLM-2/issue.md) | Enhance dependency browsing and detail pages | medium | medium | |
 
 ### Review
 
@@ -30,3 +29,4 @@ Generated: 2026-02-01
 | ID | Title | Completed |
 | --- | --- | --- |
 | [GLM-1](./GLM-1/issue.md) | Plan gitlab-metrics app structure and stack choices | 2026-01-31 |
+| [GLM-2](./GLM-2/issue.md) | Enhance dependency browsing and detail pages | 2026-02-01 |

@@ -66,6 +66,8 @@ function QueriesPage() {
   const currentPage = Math.min(page, totalPages)
   const start = (currentPage - 1) * pageSize
   const pagedTargets = filteredTargets.slice(start, start + pageSize)
+  const rangeStart = start + 1
+  const rangeEnd = Math.min(filteredTargets.length, start + pagedTargets.length)
 
   const updateSearch = (
     next: Partial<{ query: string; page: number; pageSize: number }>,
@@ -168,6 +170,9 @@ function QueriesPage() {
 
       {filteredTargets.length > pageSize ? (
         <div className="queries-pagination">
+          <span className="queries-pagination-summary">
+            Showing {rangeStart} - {rangeEnd} of {filteredTargets.length}
+          </span>
           <button
             type="button"
             onClick={() => updateSearch({ page: Math.max(1, currentPage - 1) })}

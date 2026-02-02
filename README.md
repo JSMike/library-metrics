@@ -94,6 +94,7 @@ Open `http://localhost:3000`.
 
 - The SQLite DB is stored in `./data/library-metrics.sqlite` and is tracked in git by default.
 - To reset the DB: delete the file and re-run `bun run db:migrate`.
+- Reports exclude archived or pending-deletion projects by default. Toggle this in `src/lib/report-config.ts` (`includeInactiveProjects`) if you need historical inclusion.
 
 Optional local viewer:
 

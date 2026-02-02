@@ -779,6 +779,13 @@ const runSync = async () => {
           : latestCommit?.created_at
             ? new Date(latestCommit.created_at)
             : null;
+        const pendingDeletionRaw =
+          projectInfo.marked_for_deletion_on ??
+          projectInfo.marked_for_deletion_at ??
+          null;
+        const pendingDeletionAt = pendingDeletionRaw
+          ? new Date(pendingDeletionRaw)
+          : null;
 
         const isSameCommit =
           previousSnapshot &&
@@ -798,6 +805,7 @@ const runSync = async () => {
           syncId: runId,
           defaultBranch: projectInfo.default_branch ?? "",
           archived: projectInfo.archived ?? false,
+          pendingDeletionAt,
           visibility: projectInfo.visibility ?? null,
           lastActivityAt: projectInfo.last_activity_at
             ? new Date(projectInfo.last_activity_at)

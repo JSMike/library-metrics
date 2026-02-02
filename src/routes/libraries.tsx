@@ -94,6 +94,11 @@ function LibrariesPage() {
   const currentPage = Math.min(page, totalPages)
   const start = (currentPage - 1) * pageSize
   const pagedLibraries = filteredLibraries.slice(start, start + pageSize)
+  const rangeStart = start + 1
+  const rangeEnd = Math.min(
+    filteredLibraries.length,
+    start + pagedLibraries.length,
+  )
   const updateSearch = (
     next: Partial<{ query: string; page: number; pageSize: number }>,
   ) => {
@@ -210,6 +215,9 @@ function LibrariesPage() {
 
       {filteredLibraries.length > pageSize ? (
         <div className="libraries-pagination">
+          <span className="libraries-pagination-summary">
+            Showing {rangeStart} - {rangeEnd} of {filteredLibraries.length}
+          </span>
           <button
             type="button"
             onClick={() => updateSearch({ page: Math.max(1, currentPage - 1) })}

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, not, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, not, or, sql } from "drizzle-orm";
 import { db } from "../db/client";
 import {
   dependency,
@@ -9,6 +9,7 @@ import {
   usageFileResult,
   usageResult,
 } from "../db/schema";
+import { reportConfig } from "../lib/report-config";
 import { usageQueries, usageTargets } from "../lib/usage-queries";
 
 const getLatestRunId = async () => {
@@ -19,6 +20,32 @@ const getLatestRunId = async () => {
     .limit(1);
   return rows[0]?.id ?? null;
 };
+
+const activeProjectFilter = reportConfig.includeInactiveProjects
+  ? null
+  : and(
+      eq(projectSnapshot.archived, false),
+      isNull(projectSnapshot.pendingDeletionAt),
+    );
+
+const withActiveProjectSnapshot = (base: ReturnType<typeof and>) =>
+  activeProjectFilter ? and(base, activeProjectFilter) : base;
+
+const getEffectiveSyncId = () =>
+  sql<number>`coalesce(${projectSnapshot.dataSourceSyncId}, ${projectSnapshot.syncId})`;
+
+const buildProjectDataJoin = (
+  runId: number,
+  projectIdColumn: any,
+  syncIdColumn: any,
+) =>
+  withActiveProjectSnapshot(
+    and(
+      eq(projectSnapshot.syncId, runId),
+      eq(projectSnapshot.projectId, projectIdColumn),
+      eq(syncIdColumn, getEffectiveSyncId()),
+    ),
+  );
 
 const getGitLabBaseUrl = () => {
   const value = process.env.GITLAB_BASE_URL;
@@ -330,7 +357,14 @@ export const fetchLibrarySummary = async () => {
       dependency,
       eq(lockDependencySnapshot.dependencyId, dependency.id),
     )
-    .where(eq(lockDependencySnapshot.syncId, runId))
+    .innerJoin(
+      projectSnapshot,
+      buildProjectDataJoin(
+        runId,
+        lockDependencySnapshot.projectId,
+        lockDependencySnapshot.syncId,
+      ),
+    )
     .groupBy(dependency.id, dependency.name)
     .orderBy(
       desc(sql`count(distinct ${lockDependencySnapshot.projectId})`),
@@ -361,7 +395,7 @@ export const fetchProjectSummary = async () => {
     })
     .from(projectSnapshot)
     .leftJoin(project, eq(projectSnapshot.projectId, project.id))
-    .where(eq(projectSnapshot.syncId, runId))
+    .where(withActiveProjectSnapshot(and(eq(projectSnapshot.syncId, runId))))
     .orderBy(asc(project.name), asc(project.pathWithNamespace));
 
   return { baseUrl, projects: rows };
@@ -404,9 +438,16 @@ export const fetchLibraryDetail = async (options: {
     })
     .from(lockDependencySnapshot)
     .leftJoin(project, eq(lockDependencySnapshot.projectId, project.id))
+    .innerJoin(
+      projectSnapshot,
+      buildProjectDataJoin(
+        runId,
+        lockDependencySnapshot.projectId,
+        lockDependencySnapshot.syncId,
+      ),
+    )
     .where(
       and(
-        eq(lockDependencySnapshot.syncId, runId),
         eq(lockDependencySnapshot.dependencyId, dependencyInfo.dependencyId),
       ),
     )
@@ -490,13 +531,16 @@ export const fetchProjectDetail = async (options: { projectPath?: string }) => {
       projectName: project.name,
       projectPath: project.pathWithNamespace,
       lastActivityAt: projectSnapshot.lastActivityAt,
+      dataSourceSyncId: projectSnapshot.dataSourceSyncId,
     })
     .from(projectSnapshot)
     .leftJoin(project, eq(projectSnapshot.projectId, project.id))
     .where(
-      and(
-        eq(projectSnapshot.syncId, runId),
-        eq(project.pathWithNamespace, projectPath),
+      withActiveProjectSnapshot(
+        and(
+          eq(projectSnapshot.syncId, runId),
+          eq(project.pathWithNamespace, projectPath),
+        ),
       ),
     )
     .limit(1);
@@ -505,6 +549,7 @@ export const fetchProjectDetail = async (options: { projectPath?: string }) => {
   if (!projectInfo) {
     return null;
   }
+  const effectiveSyncId = projectInfo.dataSourceSyncId ?? runId;
 
   const dependencies = await db
     .select({
@@ -516,7 +561,7 @@ export const fetchProjectDetail = async (options: { projectPath?: string }) => {
     .leftJoin(dependency, eq(lockDependencySnapshot.dependencyId, dependency.id))
     .where(
       and(
-        eq(lockDependencySnapshot.syncId, runId),
+        eq(lockDependencySnapshot.syncId, effectiveSyncId),
         eq(lockDependencySnapshot.projectId, projectInfo.projectId),
       ),
     )
@@ -550,7 +595,7 @@ export const fetchProjectDetail = async (options: { projectPath?: string }) => {
       .from(usageResult)
       .where(
         and(
-          eq(usageResult.syncId, runId),
+          eq(usageResult.syncId, effectiveSyncId),
           eq(usageResult.projectId, projectInfo.projectId),
           inArray(usageResult.targetKey, sourceTargetKeys),
         ),
@@ -613,13 +658,16 @@ export const fetchProjectSourceSubTargetDetail = async (options: {
       projectName: project.name,
       projectPath: project.pathWithNamespace,
       defaultBranch: projectSnapshot.defaultBranch,
+      dataSourceSyncId: projectSnapshot.dataSourceSyncId,
     })
     .from(projectSnapshot)
     .leftJoin(project, eq(projectSnapshot.projectId, project.id))
     .where(
-      and(
-        eq(projectSnapshot.syncId, runId),
-        eq(project.pathWithNamespace, projectPath),
+      withActiveProjectSnapshot(
+        and(
+          eq(projectSnapshot.syncId, runId),
+          eq(project.pathWithNamespace, projectPath),
+        ),
       ),
     )
     .limit(1);
@@ -628,6 +676,7 @@ export const fetchProjectSourceSubTargetDetail = async (options: {
   if (!projectInfo) {
     return null;
   }
+  const effectiveSyncId = projectInfo.dataSourceSyncId ?? runId;
 
   const sourceTargetKeys = getSourceTargetKeysForProject(projectPath);
   if (!sourceTargetKeys.includes(options.targetKey)) {
@@ -648,7 +697,7 @@ export const fetchProjectSourceSubTargetDetail = async (options: {
     .from(usageFileResult)
     .where(
       and(
-        eq(usageFileResult.syncId, runId),
+        eq(usageFileResult.syncId, effectiveSyncId),
         eq(usageFileResult.projectId, projectInfo.projectId),
         eq(usageFileResult.targetKey, options.targetKey),
         eq(usageFileResult.subTargetKey, subTargetKey),
@@ -739,13 +788,16 @@ export const fetchProjectSourceQueryDetail = async (options: {
       projectName: project.name,
       projectPath: project.pathWithNamespace,
       defaultBranch: projectSnapshot.defaultBranch,
+      dataSourceSyncId: projectSnapshot.dataSourceSyncId,
     })
     .from(projectSnapshot)
     .leftJoin(project, eq(projectSnapshot.projectId, project.id))
     .where(
-      and(
-        eq(projectSnapshot.syncId, runId),
-        eq(project.pathWithNamespace, projectPath),
+      withActiveProjectSnapshot(
+        and(
+          eq(projectSnapshot.syncId, runId),
+          eq(project.pathWithNamespace, projectPath),
+        ),
       ),
     )
     .limit(1);
@@ -754,6 +806,7 @@ export const fetchProjectSourceQueryDetail = async (options: {
   if (!projectInfo) {
     return null;
   }
+  const effectiveSyncId = projectInfo.dataSourceSyncId ?? runId;
 
   const sourceTargetKeys = getSourceTargetKeysForProject(projectPath);
   if (!sourceTargetKeys.includes(options.targetKey)) {
@@ -778,7 +831,7 @@ export const fetchProjectSourceQueryDetail = async (options: {
     .from(usageFileResult)
     .where(
       and(
-        eq(usageFileResult.syncId, runId),
+        eq(usageFileResult.syncId, effectiveSyncId),
         eq(usageFileResult.projectId, projectInfo.projectId),
         eq(usageFileResult.queryKey, queryKey),
       ),
@@ -824,11 +877,7 @@ export const fetchUsageSummary = async () => {
     usageResult.targetKey,
     project.pathWithNamespace,
   );
-  const whereClause = sourceExclusion
-    ? and(eq(usageResult.syncId, runId), sourceExclusion)
-    : eq(usageResult.syncId, runId);
-
-  const rows = await db
+  let query = db
     .select({
       targetKey: usageResult.targetKey,
       subTargetKey: usageResult.subTargetKey,
@@ -838,7 +887,20 @@ export const fetchUsageSummary = async () => {
     })
     .from(usageResult)
     .leftJoin(project, eq(usageResult.projectId, project.id))
-    .where(whereClause)
+    .innerJoin(
+      projectSnapshot,
+      buildProjectDataJoin(
+        runId,
+        usageResult.projectId,
+        usageResult.syncId,
+      ),
+    );
+
+  if (sourceExclusion) {
+    query = query.where(sourceExclusion);
+  }
+
+  const rows = await query
     .groupBy(
       usageResult.targetKey,
       usageResult.subTargetKey,
@@ -859,11 +921,7 @@ export const fetchUsageTargets = async () => {
     usageResult.targetKey,
     project.pathWithNamespace,
   );
-  const whereClause = sourceExclusion
-    ? and(eq(usageResult.syncId, runId), sourceExclusion)
-    : eq(usageResult.syncId, runId);
-
-  const rows = await db
+  let query = db
     .select({
       targetKey: usageResult.targetKey,
       matchCount: sql<number>`sum(${usageResult.matchCount})`,
@@ -871,7 +929,20 @@ export const fetchUsageTargets = async () => {
     })
     .from(usageResult)
     .leftJoin(project, eq(usageResult.projectId, project.id))
-    .where(whereClause)
+    .innerJoin(
+      projectSnapshot,
+      buildProjectDataJoin(
+        runId,
+        usageResult.projectId,
+        usageResult.syncId,
+      ),
+    );
+
+  if (sourceExclusion) {
+    query = query.where(sourceExclusion);
+  }
+
+  const rows = await query
     .groupBy(usageResult.targetKey)
     .orderBy(desc(sql`sum(${usageResult.matchCount})`));
 
@@ -896,11 +967,10 @@ export const fetchUsageTargetDetail = async (targetKey: string) => {
       : null;
   const whereClause = exclusion
     ? and(
-        eq(usageResult.syncId, runId),
         eq(usageResult.targetKey, targetKey),
         exclusion,
       )
-    : and(eq(usageResult.syncId, runId), eq(usageResult.targetKey, targetKey));
+    : eq(usageResult.targetKey, targetKey);
 
   const rows = await db
     .select({
@@ -911,6 +981,14 @@ export const fetchUsageTargetDetail = async (targetKey: string) => {
     })
     .from(usageResult)
     .leftJoin(project, eq(usageResult.projectId, project.id))
+    .innerJoin(
+      projectSnapshot,
+      buildProjectDataJoin(
+        runId,
+        usageResult.projectId,
+        usageResult.syncId,
+      ),
+    )
     .where(whereClause)
     .groupBy(usageResult.subTargetKey, usageResult.queryKey)
     .orderBy(asc(usageResult.subTargetKey), asc(usageResult.queryKey));
@@ -973,13 +1051,11 @@ export const fetchUsageSubTargetDetail = async (
       : null;
   const whereClause = exclusion
     ? and(
-        eq(usageResult.syncId, runId),
         eq(usageResult.targetKey, targetKey),
         eq(usageResult.subTargetKey, subTargetKey),
         exclusion,
       )
     : and(
-        eq(usageResult.syncId, runId),
         eq(usageResult.targetKey, targetKey),
         eq(usageResult.subTargetKey, subTargetKey),
       );
@@ -994,6 +1070,14 @@ export const fetchUsageSubTargetDetail = async (
     })
     .from(usageResult)
     .leftJoin(project, eq(usageResult.projectId, project.id))
+    .innerJoin(
+      projectSnapshot,
+      buildProjectDataJoin(
+        runId,
+        usageResult.projectId,
+        usageResult.syncId,
+      ),
+    )
     .where(whereClause)
     .groupBy(usageResult.queryKey, project.id, project.name, project.pathWithNamespace)
     .orderBy(asc(usageResult.queryKey), asc(project.name));
@@ -1069,14 +1153,10 @@ export const fetchUsageQueryDetail = async (
       : null;
   const whereClause = exclusion
     ? and(
-        eq(usageFileResult.syncId, runId),
         eq(usageFileResult.queryKey, queryKey),
         exclusion,
       )
-    : and(
-        eq(usageFileResult.syncId, runId),
-        eq(usageFileResult.queryKey, queryKey),
-      );
+    : eq(usageFileResult.queryKey, queryKey);
 
   const rows = await db
     .select({
@@ -1089,11 +1169,12 @@ export const fetchUsageQueryDetail = async (
     })
     .from(usageFileResult)
     .leftJoin(project, eq(usageFileResult.projectId, project.id))
-    .leftJoin(
+    .innerJoin(
       projectSnapshot,
-      and(
-        eq(projectSnapshot.projectId, project.id),
-        eq(projectSnapshot.syncId, runId),
+      buildProjectDataJoin(
+        runId,
+        usageFileResult.projectId,
+        usageFileResult.syncId,
       ),
     )
     .where(whereClause)

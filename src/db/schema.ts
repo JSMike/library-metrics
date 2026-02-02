@@ -116,6 +116,7 @@ export const projectSnapshot = sqliteTable(
       .references(() => syncRun.id),
     defaultBranch: text("default_branch").notNull(),
     archived: integer("archived", { mode: "boolean" }).notNull().default(false),
+    pendingDeletionAt: integer("pending_deletion_at", { mode: "timestamp_ms" }),
     visibility: text("visibility"),
     lastActivityAt: integer("last_activity_at", { mode: "timestamp_ms" }),
     metadataJson: text("metadata_json", { mode: "json" }).$type<

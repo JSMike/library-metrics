@@ -1,0 +1,1 @@
+ALTER TABLE `project_snapshot` ADD `pending_deletion_at` integer;

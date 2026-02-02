@@ -4,13 +4,15 @@ import { trpcClient } from '@/lib/trpc-client'
 import './dashboard.scss'
 
 export const dashboardLoader = async () => {
-  const [latestSyncRun, librarySummary, usageTargets] = await Promise.all([
-    trpcClient.latestSyncRun.query(),
-    trpcClient.librarySummary.query(),
-    trpcClient.usageTargets.query(),
-  ])
+  const [latestSyncRun, librarySummary, projectSummary, usageTargets] =
+    await Promise.all([
+      trpcClient.latestSyncRun.query(),
+      trpcClient.librarySummary.query(),
+      trpcClient.projectSummary.query(),
+      trpcClient.usageTargets.query(),
+    ])
 
-  return { latestSyncRun, librarySummary, usageTargets }
+  return { latestSyncRun, librarySummary, projectSummary, usageTargets }
 }
 
 type DashboardData = Awaited<ReturnType<typeof dashboardLoader>>
@@ -45,6 +47,7 @@ const splitLibraryName = (name?: string | null) => {
 export function DashboardPage({
   latestSyncRun,
   librarySummary,
+  projectSummary,
   usageTargets,
 }: DashboardData) {
   const [libraryFilter, setLibraryFilter] = useState('')
@@ -75,6 +78,11 @@ export function DashboardPage({
     libraryStart,
     libraryStart + PAGE_SIZE,
   )
+  const libraryRangeStart = libraryStart + 1
+  const libraryRangeEnd = Math.min(
+    filteredLibraries.length,
+    libraryStart + pagedLibraries.length,
+  )
   const totalUsagePages = Math.max(
     1,
     Math.ceil(usageTargets.length / PAGE_SIZE),
@@ -84,6 +92,11 @@ export function DashboardPage({
   const pagedUsageTargets = usageTargets.slice(
     usageStart,
     usageStart + PAGE_SIZE,
+  )
+  const usageRangeStart = usageStart + 1
+  const usageRangeEnd = Math.min(
+    usageTargets.length,
+    usageStart + pagedUsageTargets.length,
   )
 
   return (
@@ -111,6 +124,14 @@ export function DashboardPage({
                 <span>{latestSyncRun.note}</span>
               </div>
             ) : null}
+            <div>
+              <span className="dashboard-label">Projects</span>
+              <span>{projectSummary.projects.length}</span>
+            </div>
+            <div>
+              <span className="dashboard-label">Libraries</span>
+              <span>{librarySummary.length}</span>
+            </div>
           </div>
         ) : (
           <p>No sync runs yet.</p>
@@ -179,6 +200,10 @@ export function DashboardPage({
         )}
         {filteredLibraries.length > PAGE_SIZE ? (
           <div className="dashboard-pagination">
+            <span className="dashboard-pagination-summary">
+              Showing {libraryRangeStart} - {libraryRangeEnd} of{' '}
+              {filteredLibraries.length}
+            </span>
             <button
               type="button"
               onClick={() => setLibraryPage((page) => Math.max(1, page - 1))}
@@ -240,6 +265,9 @@ export function DashboardPage({
         )}
         {usageTargets.length > PAGE_SIZE ? (
           <div className="dashboard-pagination">
+            <span className="dashboard-pagination-summary">
+              Showing {usageRangeStart} - {usageRangeEnd} of {usageTargets.length}
+            </span>
             <button
               type="button"
               onClick={() => setUsagePage((page) => Math.max(1, page - 1))}

@@ -45,3 +45,7 @@ Generated: 2026-02-02
 | [LM-12](./LM-12/issue.md) | Document fork workflow for keeping local SQLite | 2026-02-01 |
 | [LM-13](./LM-13/issue.md) | Rename project to library-metrics and rename dependencies to libraries | 2026-02-02 |
 | [LM-14](./LM-14/issue.md) | Rewrite README for humans (project purpose + architecture + getting started) | 2026-02-02 |
+| [LM-18](./LM-18/issue.md) | Exclude inactive projects from reports | 2026-02-02 |
+| [LM-19](./LM-19/issue.md) | Preserve library/usage data on non-force sync | 2026-02-02 |
+| [LM-20](./LM-20/issue.md) | Add project/library counts to dashboard cards | 2026-02-02 |
+| [LM-21](./LM-21/issue.md) | Add range summary to dashboard pagination | 2026-02-02 |

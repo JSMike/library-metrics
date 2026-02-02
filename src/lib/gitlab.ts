@@ -28,6 +28,8 @@ export type GitLabProjectResponse = {
   archived: boolean;
   visibility: string;
   last_activity_at: string | null;
+  marked_for_deletion_on?: string | null;
+  marked_for_deletion_at?: string | null;
 };
 
 export type GitLabCommitResponse = {

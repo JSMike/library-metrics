@@ -314,7 +314,7 @@ export const fetchLatestSyncRun = async () => {
   return rows[0] ?? null;
 };
 
-export const fetchDependencySummary = async () => {
+export const fetchLibrarySummary = async () => {
   const runId = await getLatestRunId();
   if (!runId) {
     return [];
@@ -368,7 +368,7 @@ export const fetchProjectSummary = async () => {
   return { baseUrl, projects: rows };
 };
 
-export const fetchDependencyDetail = async (options: {
+export const fetchLibraryDetail = async (options: {
   scope?: string;
   lib?: string;
 }) => {
@@ -1169,15 +1169,15 @@ export const getLatestSyncRun = createServerFn({ method: "GET" }).handler(
   async () => await fetchLatestSyncRun(),
 );
 
-export const getDependencySummary = createServerFn({ method: "GET" }).handler(
-  async () => await fetchDependencySummary(),
+export const getLibrarySummary = createServerFn({ method: "GET" }).handler(
+  async () => await fetchLibrarySummary(),
 );
 
-export const getDependencyDetail = createServerFn({ method: "GET" })
+export const getLibraryDetail = createServerFn({ method: "GET" })
   .inputValidator(
     (data: { scope?: string; lib?: string }) => data,
   )
-  .handler(async ({ data }) => await fetchDependencyDetail(data));
+  .handler(async ({ data }) => await fetchLibraryDetail(data));
 
 export const getProjectDetail = createServerFn({ method: "GET" })
   .inputValidator((data: { projectPath?: string }) => data)

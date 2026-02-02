@@ -20,7 +20,7 @@ This document defines the issue tracking and workflow requirements for AI agents
 ### 2. Starting New Work
 - Create a new issue folder with `issue.md` and start a plan in `plan.md`.
 - If your tool supports issue commands, use `/issue create <title>`.
-- Plan file is saved to `.issues/GLM-N/plan.md`.
+- Plan file is saved to `.issues/LM-N/plan.md`.
 - When first creating an issue, ask clarifying questions about any gaps in the requirements that would be helpful to consider before offering to implement, as needed.
 
 ### 3. Resuming Existing Work
@@ -61,7 +61,7 @@ If any condition is not met, create a new `summary-N.md`.
 .issues/
 ├── README.md           # Conventions documentation
 ├── index.md            # Auto-generated issue index
-└── GLM-N/
+└── LM-N/
     ├── issue.md        # Requirements and metadata
     ├── plan.md         # Implementation approach
     ├── summary-1.md    # Session 1 progress

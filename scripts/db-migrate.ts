@@ -8,7 +8,7 @@ import { migrate } from 'drizzle-orm/bun-sqlite/migrator'
 const getDbFile = () => {
   const envValue = process.env.DB_FILE_NAME
   const trimmed = envValue && envValue.trim().length > 0 ? envValue.trim() : ''
-  return trimmed || './data/gitlab-metrics.sqlite'
+  return trimmed || './data/library-metrics.sqlite'
 }
 
 const run = async () => {

@@ -1,398 +1,147 @@
-Welcome to your new TanStack app! 
+# Library Metrics
 
-# Getting Started
+Library Metrics is an internal dashboard for scanning all projects in a group/org and analyzing library usage. It currently ships with a GitLab adapter, but is designed to be extended to other source systems (e.g., GitHub, Bitbucket) and to downstream systems (e.g., Jira, CMDB, governance tools) to aggregate project metadata and usage intelligence.
 
-To run this application:
+The primary goal is to track library adoption and usage patterns, but it can also surface vulnerable or deprecated dependencies and help identify owners responsible for remediation.
+
+## What This App Does
+
+- Scans every project in a group/org and records library usage from package manifests and lockfiles.
+- Runs configurable usage queries to detect patterns across codebases.
+- Provides dashboards and drill-down reports by library, project, and query.
+- Stores results in a local SQLite database for fast queries and offline inspection.
+
+## Core Use Cases
+
+- **Adoption tracking:** see which libraries are spreading and where.
+- **Risk management:** find projects using deprecated or vulnerable libraries.
+- **Ownership and accountability:** identify project owners and contributors who can fix issues.
+
+## Architecture Overview
+
+High-level flow:
+
+1. **Sync job** pulls group/project metadata and repository files via GitLab API.
+2. **Dependency extraction** reads package manifests + lockfiles into normalized tables.
+3. **Usage queries** scan source files for configured patterns.
+4. **SQLite storage** persists snapshots for reporting.
+5. **tRPC API** exposes summaries and detail views to the UI.
+6. **TanStack Start UI** renders dashboards and drill-downs.
+
+Key configuration lives in:
+- `src/lib/usage-queries.ts` (usage targets + queries)
+- `.env` (GitLab credentials and sync tuning)
+
+## Tech Stack (Docs)
+
+- **Runtime:** [Bun](https://bun.sh/docs)
+- **Web framework:** [TanStack Start](https://tanstack.com/router/latest/docs/framework/react/overview)
+- **Routing:** [TanStack Router](https://tanstack.com/router/latest/docs/framework/react/overview)
+- **API layer:** [tRPC](https://trpc.io/docs)
+- **Database:** [SQLite](https://www.sqlite.org/index.html) via [Drizzle ORM](https://orm.drizzle.team/docs/overview)
+- **Build:** [Vite](https://vitejs.dev/guide/)
+- **Styling:** [Sass (SCSS)](https://sass-lang.com/documentation/)
+- **GitLab API:** [GitLab REST API](https://docs.gitlab.com/ee/api/)
+
+## Getting Started
+
+### Prerequisites
+
+- Bun installed
+- GitLab access token with permission to read group projects
+
+### Install
 
 ```bash
 bun install
-bun --bun run dev
 ```
 
-## GitLab Sync
+### Configure
 
-Run the sync job to populate the SQLite database:
+Copy `.env.example` to `.env` and set:
+
+- `GITLAB_GROUP_PATH`
+- `GITLAB_TOKEN`
+- `DB_FILE_NAME` (defaults to `./data/library-metrics.sqlite`)
+
+### Migrate Database
+
+```bash
+bun run db:migrate
+```
+
+### Run Sync
 
 ```bash
 bun --bun run sync:gitlab
 ```
 
-To force a re-sync even when the latest commit SHA has not changed (useful after schema changes):
+Force a full re-sync when needed:
 
 ```bash
 bun --bun run sync:gitlab -- --force
 ```
 
-Tune GitLab request throttling and timeouts via `.env` (see `.env.example`).
-
-### Database Migrations
-
-Migrations run with a Bun-based migrator (no `better-sqlite3` required):
+### Run the App
 
 ```bash
-bun run db:migrate
+bun --bun run dev
 ```
 
-### Reset the Database
+Open `http://localhost:3000`.
 
-To start fresh, delete the SQLite file and re-run migrations:
+## Working With Data
 
-```bash
-rm ./data/gitlab-metrics.sqlite
-# If SQLite left WAL/SHM files behind, remove them too:
-rm ./data/gitlab-metrics.sqlite-wal ./data/gitlab-metrics.sqlite-shm
+- The SQLite DB is stored in `./data/library-metrics.sqlite` and is tracked in git by default.
+- To reset the DB: delete the file and re-run `bun run db:migrate`.
 
-bun run db:migrate
-```
-
-Then run a forced sync:
-
-```bash
-bun --bun run sync:gitlab -- --force
-```
-
-### Forks: Keep Local SQLite While Pulling Upstream
-
-If the boilerplate repo tracks the SQLite file but your fork needs its own DB
-file, you can keep your local DB while still pulling upstream changes by using
-a custom merge driver.
-
-In your fork only:
-
-```bash
-# Keep local sqlite on merges/pulls from upstream
-echo "data/gitlab-metrics.sqlite merge=keepmine" >> .gitattributes
-git config merge.keepmine.name "Keep local sqlite"
-git config merge.keepmine.driver true
-```
-
-Now upstream pulls will always keep your fork’s SQLite file, while you can still
-commit local DB changes in the fork.
-
-### Sync Debugging
-
-Enable debug logs and scan progress:
-
-```bash
-SYNC_DEBUG=1 bun --bun run sync:gitlab -- --force
-```
-
-Increase scan progress logging frequency (every 10 files):
-
-```bash
-SYNC_VERBOSE=1 bun --bun run sync:gitlab -- --force
-# or
-bun --bun run sync:gitlab -- --force --verbose
-```
-
-# Building For Production
-
-To build this application for production:
-
-```bash
-bun --bun run build
-```
-
-## Testing
-
-This project uses [Vitest](https://vitest.dev/) for testing. You can run the tests with:
-
-```bash
-bun --bun run test
-```
-
-## SQLite Viewer (Datasette)
-
-Datasette provides a self-hosted, localhost-only UI for the SQLite database.
-
-Install Datasette:
-
-```bash
-# Ubuntu/Debian (pipx)
-sudo apt-get update && sudo apt-get install -y pipx
-pipx ensurepath
-pipx install datasette
-
-# macOS (Homebrew + pipx)
-brew install pipx
-pipx ensurepath
-pipx install datasette
-```
-
-Make sure pipx binaries are on your PATH (needed for `datasette`):
-
-```bash
-export PATH="$HOME/.local/bin:$PATH"
-```
-
-Run the viewer:
+Optional local viewer:
 
 ```bash
 bun run db:view
 ```
 
-Open `http://127.0.0.1:8001` in your browser.
+## Extending the System
 
-## Styling
+### Add or Change Usage Queries
 
-This project uses CSS for styling.
+Edit `src/lib/usage-queries.ts` to add targets, sub-targets, or query patterns.
 
+### Add Another Data Source
 
+- Add a new sync job under `src/jobs/`.
+- Store raw results in new tables or reuse existing snapshots.
+- Expose summaries via `src/server/reporting.ts` and `src/server/trpc.ts`.
 
+The goal is to keep the **source adapter** isolated, while reusing the reporting and UI layers.
 
-## Routing
-This project uses [TanStack Router](https://tanstack.com/router). The initial setup is a file based router. Which means that the routes are managed as files in `src/routes`.
+## AI-WORKFLOW (Audit Tracking)
 
-### Adding A Route
+This repo includes an `AI-WORKFLOW` system under `.issues/` to track features, enhancements, and bugs with an audit trail. The workflow can be extended to other issue systems (Jira, GitHub, GitLab) through skills/MCP/API/command integrations.
 
-To add a new route to your application just add another a new file in the `./src/routes` directory.
+If you add or modify this workflow, also update:
+- `AI-WORKFLOW.md`
+- `.issues/README.md`
+- `.codex/commands/` and `.claude/commands/` (if applicable)
 
-TanStack will automatically generate the content of the route file for you.
+## Project Structure
 
-Now that you have two routes you can use a `Link` component to navigate between them.
+- `src/routes/` – UI pages (dashboard, libraries, projects, usage reports)
+- `src/server/` – tRPC routes + reporting queries
+- `src/jobs/` – sync jobs (GitLab adapter)
+- `src/db/` – schema and DB client
+- `src/lib/` – shared utilities and usage query definitions
+- `drizzle/` – database migrations
+- `data/` – local SQLite database
 
-### Adding Links
-
-To use SPA (Single Page Application) navigation you will need to import the `Link` component from `@tanstack/react-router`.
-
-```tsx
-import { Link } from "@tanstack/react-router";
-```
-
-Then anywhere in your JSX you can use it like so:
-
-```tsx
-<Link to="/about">About</Link>
-```
-
-This will create a link that will navigate to the `/about` route.
-
-More information on the `Link` component can be found in the [Link documentation](https://tanstack.com/router/v1/docs/framework/react/api/router/linkComponent).
-
-### Using A Layout
-
-In the File Based Routing setup the layout is located in `src/routes/__root.tsx`. Anything you add to the root route will appear in all the routes. The route content will appear in the JSX where you use the `<Outlet />` component.
-
-Here is an example layout that includes a header:
-
-```tsx
-import { Outlet, createRootRoute } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-
-import { Link } from "@tanstack/react-router";
-
-export const Route = createRootRoute({
-  component: () => (
-    <>
-      <header>
-        <nav>
-          <Link to="/">Home</Link>
-          <Link to="/about">About</Link>
-        </nav>
-      </header>
-      <Outlet />
-      <TanStackRouterDevtools />
-    </>
-  ),
-})
-```
-
-The `<TanStackRouterDevtools />` component is not required so you can remove it if you don't want it in your layout.
-
-More information on layouts can be found in the [Layouts documentation](https://tanstack.com/router/latest/docs/framework/react/guide/routing-concepts#layouts).
-
-
-## Data Fetching
-
-There are multiple ways to fetch data in your application. You can use TanStack Query to fetch data from a server. But you can also use the `loader` functionality built into TanStack Router to load the data for a route before it's rendered.
-
-For example:
-
-```tsx
-const peopleRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/people",
-  loader: async () => {
-    const response = await fetch("https://swapi.dev/api/people");
-    return response.json() as Promise<{
-      results: {
-        name: string;
-      }[];
-    }>;
-  },
-  component: () => {
-    const data = peopleRoute.useLoaderData();
-    return (
-      <ul>
-        {data.results.map((person) => (
-          <li key={person.name}>{person.name}</li>
-        ))}
-      </ul>
-    );
-  },
-});
-```
-
-Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
-
-### React-Query
-
-React-Query is an excellent addition or alternative to route loading and integrating it into you application is a breeze.
-
-First add your dependencies:
+## Common Commands
 
 ```bash
-bun install @tanstack/react-query @tanstack/react-query-devtools
+bun --bun run dev
+bun --bun run build
+bun --bun run preview
+bun --bun run sync:gitlab
+bun --bun run sync:gitlab -- --force
+bun run db:migrate
+bun run db:view
 ```
-
-Next we'll need to create a query client and provider. We recommend putting those in `main.tsx`.
-
-```tsx
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-
-// ...
-
-const queryClient = new QueryClient();
-
-// ...
-
-if (!rootElement.innerHTML) {
-  const root = ReactDOM.createRoot(rootElement);
-
-  root.render(
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
-  );
-}
-```
-
-You can also add TanStack Query Devtools to the root route (optional).
-
-```tsx
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-
-const rootRoute = createRootRoute({
-  component: () => (
-    <>
-      <Outlet />
-      <ReactQueryDevtools buttonPosition="top-right" />
-      <TanStackRouterDevtools />
-    </>
-  ),
-});
-```
-
-Now you can use `useQuery` to fetch your data.
-
-```tsx
-import { useQuery } from "@tanstack/react-query";
-
-import "./App.css";
-
-function App() {
-  const { data } = useQuery({
-    queryKey: ["people"],
-    queryFn: () =>
-      fetch("https://swapi.dev/api/people")
-        .then((res) => res.json())
-        .then((data) => data.results as { name: string }[]),
-    initialData: [],
-  });
-
-  return (
-    <div>
-      <ul>
-        {data.map((person) => (
-          <li key={person.name}>{person.name}</li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-export default App;
-```
-
-You can find out everything you need to know on how to use React-Query in the [React-Query documentation](https://tanstack.com/query/latest/docs/framework/react/overview).
-
-## State Management
-
-Another common requirement for React applications is state management. There are many options for state management in React. TanStack Store provides a great starting point for your project.
-
-First you need to add TanStack Store as a dependency:
-
-```bash
-bun install @tanstack/store
-```
-
-Now let's create a simple counter in the `src/App.tsx` file as a demonstration.
-
-```tsx
-import { useStore } from "@tanstack/react-store";
-import { Store } from "@tanstack/store";
-import "./App.css";
-
-const countStore = new Store(0);
-
-function App() {
-  const count = useStore(countStore);
-  return (
-    <div>
-      <button onClick={() => countStore.setState((n) => n + 1)}>
-        Increment - {count}
-      </button>
-    </div>
-  );
-}
-
-export default App;
-```
-
-One of the many nice features of TanStack Store is the ability to derive state from other state. That derived state will update when the base state updates.
-
-Let's check this out by doubling the count using derived state.
-
-```tsx
-import { useStore } from "@tanstack/react-store";
-import { Store, Derived } from "@tanstack/store";
-import "./App.css";
-
-const countStore = new Store(0);
-
-const doubledStore = new Derived({
-  fn: () => countStore.state * 2,
-  deps: [countStore],
-});
-doubledStore.mount();
-
-function App() {
-  const count = useStore(countStore);
-  const doubledCount = useStore(doubledStore);
-
-  return (
-    <div>
-      <button onClick={() => countStore.setState((n) => n + 1)}>
-        Increment - {count}
-      </button>
-      <div>Doubled - {doubledCount}</div>
-    </div>
-  );
-}
-
-export default App;
-```
-
-We use the `Derived` class to create a new store that is derived from another store. The `Derived` class has a `mount` method that will start the derived store updating.
-
-Once we've created the derived store we can use it in the `App` component just like we would any other store using the `useStore` hook.
-
-You can find out everything you need to know on how to use TanStack Store in the [TanStack Store documentation](https://tanstack.com/store/latest).
-
-# Demo files
-
-Files prefixed with `demo` can be safely deleted. They are there to provide a starting point for you to play around with the features you've installed.
-
-# Learn More
-
-You can learn more about all of the offerings from TanStack in the [TanStack documentation](https://tanstack.com).

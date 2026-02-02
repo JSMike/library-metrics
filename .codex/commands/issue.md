@@ -26,7 +26,7 @@ This folder contains issue tracking for the repository. Each issue has its own f
 
 ## Structure
 
-Each `GLM-N/` folder contains:
+Each `LM-N/` folder contains:
 - `issue.md` - Requirements and metadata (always present)
 - `plan.md` - Implementation approach (created when planning)
 - `summary-1.md`, `summary-2.md`, ... - Session progress records (created per work session)
@@ -91,12 +91,12 @@ Create a new issue folder with issue.md template, then enter plan mode.
 
 **This is the recommended way to start new work** - it ensures all planning and decisions are captured in the issue folder for audit purposes.
 
-1. Find the next available GLM-N number by scanning existing folders
-2. Create `.issues/GLM-N/` directory
-3. Create `.issues/GLM-N/issue.md` with template:
+1. Find the next available LM-N number by scanning existing folders
+2. Create `.issues/LM-N/` directory
+3. Create `.issues/LM-N/issue.md` with template:
 
 ```markdown
-# GLM-N: <title>
+# LM-N: <title>
 
 <!-- Metadata -->
 | Field        | Value                              |
@@ -127,7 +127,7 @@ Create a new issue folder with issue.md template, then enter plan mode.
 ```
 
 4. Display the created issue path
-5. **Enter plan mode** with plan file at `.issues/GLM-N/plan.md`
+5. **Enter plan mode** with plan file at `.issues/LM-N/plan.md`
    - All planning work is captured in the issue folder
    - This becomes the complete audit trail
 
@@ -137,7 +137,7 @@ Create a new issue folder with issue.md template, then enter plan mode.
 
 Search for existing issues that match a description. **Use this before starting new work** to avoid creating duplicate issues.
 
-1. Read all `.issues/GLM-*/issue.md` files
+1. Read all `.issues/LM-*/issue.md` files
 2. Compare Summary and Title against the provided description
 3. Return matching issues with relevance indication
 4. If match found, suggest `/issue work <id>` to continue that issue
@@ -146,11 +146,11 @@ Example output:
 ```
 Found 2 potential matches:
 
-GLM-8: Button hover states fail contrast (high match)
+LM-8: Button hover states fail contrast (high match)
   Status: ready | Priority: high
-  → Use `/issue work GLM-8` to continue this issue
+  → Use `/issue work LM-8` to continue this issue
 
-GLM-3: Stat delta colors need AA audit (partial match)
+LM-3: Stat delta colors need AA audit (partial match)
   Status: ready | Priority: medium
 
 No match? Use `/issue create "<title>"` to create new issue.
@@ -176,7 +176,7 @@ This action helps agents pick up existing work rather than starting fresh.
 
 Show issues, optionally filtered by status.
 
-1. Scan all `.issues/GLM-*/issue.md` files
+1. Scan all `.issues/LM-*/issue.md` files
 2. Parse metadata table from each
 3. If status filter provided, only show matching issues
 4. Display as table grouped by status:
@@ -185,7 +185,7 @@ Show issues, optionally filtered by status.
 ## In Progress
 | ID | Title | Owner | Priority |
 |----|-------|-------|----------|
-| GLM-1 | Issue title | Agent | high |
+| LM-1 | Issue title | Agent | high |
 
 ## Ready
 ...
@@ -352,7 +352,7 @@ Remove an issue folder after PR merge.
 
 Regenerate the index.md file from all issues.
 
-1. Scan all `.issues/GLM-*/issue.md` files
+1. Scan all `.issues/LM-*/issue.md` files
 2. Parse metadata from each
 3. Generate `.issues/index.md`:
 
@@ -366,7 +366,7 @@ Generated: <today's date>
 ### In Progress
 | ID | Title | Owner | Blocked By |
 |----|-------|-------|------------|
-| [GLM-1](./GLM-1/issue.md) | Title | Owner | - |
+| [LM-1](./LM-1/issue.md) | Title | Owner | - |
 
 ### Ready
 | ID | Title | Owner | Priority |

@@ -12,8 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as QueriesRouteImport } from './routes/queries'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as ProjectRouteImport } from './routes/project'
-import { Route as DependencyRouteImport } from './routes/dependency'
-import { Route as DependenciesRouteImport } from './routes/dependencies'
+import { Route as LibraryRouteImport } from './routes/library'
+import { Route as LibrariesRouteImport } from './routes/libraries'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as QueriesTargetKeyRouteImport } from './routes/queries.$targetKey'
@@ -38,14 +38,14 @@ const ProjectRoute = ProjectRouteImport.update({
   path: '/project',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DependencyRoute = DependencyRouteImport.update({
-  id: '/dependency',
-  path: '/dependency',
+const LibraryRoute = LibraryRouteImport.update({
+  id: '/library',
+  path: '/library',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DependenciesRoute = DependenciesRouteImport.update({
-  id: '/dependencies',
-  path: '/dependencies',
+const LibrariesRoute = LibrariesRouteImport.update({
+  id: '/libraries',
+  path: '/libraries',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -96,8 +96,8 @@ const ProjectUsageTargetKeySubTargetKeyQueryKeyRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
-  '/dependencies': typeof DependenciesRoute
-  '/dependency': typeof DependencyRoute
+  '/libraries': typeof LibrariesRoute
+  '/library': typeof LibraryRoute
   '/project': typeof ProjectRouteWithChildren
   '/projects': typeof ProjectsRoute
   '/queries': typeof QueriesRouteWithChildren
@@ -111,8 +111,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
-  '/dependencies': typeof DependenciesRoute
-  '/dependency': typeof DependencyRoute
+  '/libraries': typeof LibrariesRoute
+  '/library': typeof LibraryRoute
   '/project': typeof ProjectRouteWithChildren
   '/projects': typeof ProjectsRoute
   '/queries': typeof QueriesRouteWithChildren
@@ -127,8 +127,8 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
-  '/dependencies': typeof DependenciesRoute
-  '/dependency': typeof DependencyRoute
+  '/libraries': typeof LibrariesRoute
+  '/library': typeof LibraryRoute
   '/project': typeof ProjectRouteWithChildren
   '/projects': typeof ProjectsRoute
   '/queries': typeof QueriesRouteWithChildren
@@ -144,8 +144,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/dashboard'
-    | '/dependencies'
-    | '/dependency'
+    | '/libraries'
+    | '/library'
     | '/project'
     | '/projects'
     | '/queries'
@@ -159,8 +159,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/dashboard'
-    | '/dependencies'
-    | '/dependency'
+    | '/libraries'
+    | '/library'
     | '/project'
     | '/projects'
     | '/queries'
@@ -174,8 +174,8 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/dashboard'
-    | '/dependencies'
-    | '/dependency'
+    | '/libraries'
+    | '/library'
     | '/project'
     | '/projects'
     | '/queries'
@@ -190,8 +190,8 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
-  DependenciesRoute: typeof DependenciesRoute
-  DependencyRoute: typeof DependencyRoute
+  LibrariesRoute: typeof LibrariesRoute
+  LibraryRoute: typeof LibraryRoute
   ProjectRoute: typeof ProjectRouteWithChildren
   ProjectsRoute: typeof ProjectsRoute
   QueriesRoute: typeof QueriesRouteWithChildren
@@ -221,18 +221,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dependency': {
-      id: '/dependency'
-      path: '/dependency'
-      fullPath: '/dependency'
-      preLoaderRoute: typeof DependencyRouteImport
+    '/library': {
+      id: '/library'
+      path: '/library'
+      fullPath: '/library'
+      preLoaderRoute: typeof LibraryRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dependencies': {
-      id: '/dependencies'
-      path: '/dependencies'
-      fullPath: '/dependencies'
-      preLoaderRoute: typeof DependenciesRouteImport
+    '/libraries': {
+      id: '/libraries'
+      path: '/libraries'
+      fullPath: '/libraries'
+      preLoaderRoute: typeof LibrariesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -362,8 +362,8 @@ const QueriesRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
-  DependenciesRoute: DependenciesRoute,
-  DependencyRoute: DependencyRoute,
+  LibrariesRoute: LibrariesRoute,
+  LibraryRoute: LibraryRoute,
   ProjectRoute: ProjectRouteWithChildren,
   ProjectsRoute: ProjectsRoute,
   QueriesRoute: QueriesRouteWithChildren,

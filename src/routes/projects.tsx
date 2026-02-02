@@ -1,7 +1,7 @@
 import { Link, createFileRoute, type SearchSchemaInput } from '@tanstack/react-router'
 import { useMemo } from 'react'
 import { trpcClient } from '@/lib/trpc-client'
-import './dependencies.scss'
+import './libraries.scss'
 
 const DEFAULT_PAGE_SIZE = 50
 const PAGE_SIZE_OPTIONS = [50, 100, 200]
@@ -107,19 +107,19 @@ function ProjectsPage() {
   }
 
   return (
-    <div className="dependencies-page">
-      <header className="dependencies-header">
+    <div className="libraries-page">
+      <header className="libraries-header">
         <div>
           <h1>Projects</h1>
           <p>Browse all projects across the latest sync run.</p>
         </div>
-        <Link className="dependencies-link" to="/">
+        <Link className="libraries-link" to="/">
           Back to dashboard
         </Link>
       </header>
 
-      <div className="dependencies-actions">
-        <label className="dependencies-filter">
+      <div className="libraries-actions">
+        <label className="libraries-filter">
           <span>Filter</span>
           <input
             type="text"
@@ -130,7 +130,7 @@ function ProjectsPage() {
             placeholder="Search projects..."
           />
         </label>
-        <label className="dependencies-filter">
+        <label className="libraries-filter">
           <span>Page size</span>
           <select
             value={pageSize}
@@ -155,7 +155,7 @@ function ProjectsPage() {
       ) : filteredProjects.length === 0 ? (
         <p>No projects match the current filter.</p>
       ) : (
-        <div className="dependencies-table">
+        <div className="libraries-table">
           <table>
             <thead>
               <tr>
@@ -189,13 +189,13 @@ function ProjectsPage() {
                     </td>
                     <td>{formatTimestamp(row.lastActivityAt)}</td>
                     <td>
-                      <span className="dependencies-links">
+                      <span className="libraries-links">
                         {codeUrl ? (
                           <a href={codeUrl} target="_blank" rel="noreferrer">
                             Code
                           </a>
                         ) : (
-                          <span className="dependencies-muted">—</span>
+                          <span className="libraries-muted">—</span>
                         )}
                         {membersUrl ? (
                           <a href={membersUrl} target="_blank" rel="noreferrer">
@@ -213,7 +213,7 @@ function ProjectsPage() {
       )}
 
       {filteredProjects.length > pageSize ? (
-        <div className="dependencies-pagination">
+        <div className="libraries-pagination">
           <button
             type="button"
             onClick={() => updateSearch({ page: Math.max(1, currentPage - 1) })}

@@ -1,6 +1,6 @@
 {
-  "short_name": "GitLab Metrics",
-  "name": "GitLab Metrics - Library dependencies and project metrics dashboard",
+  "short_name": "Library Metrics",
+  "name": "Library Metrics - Library usage and project metrics dashboard",
   "icons": [
     {
       "src": "favicon.ico",

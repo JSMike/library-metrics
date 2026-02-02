@@ -4,13 +4,13 @@ import { trpcClient } from '@/lib/trpc-client'
 import './dashboard.scss'
 
 export const dashboardLoader = async () => {
-  const [latestSyncRun, dependencySummary, usageTargets] = await Promise.all([
+  const [latestSyncRun, librarySummary, usageTargets] = await Promise.all([
     trpcClient.latestSyncRun.query(),
-    trpcClient.dependencySummary.query(),
+    trpcClient.librarySummary.query(),
     trpcClient.usageTargets.query(),
   ])
 
-  return { latestSyncRun, dependencySummary, usageTargets }
+  return { latestSyncRun, librarySummary, usageTargets }
 }
 
 type DashboardData = Awaited<ReturnType<typeof dashboardLoader>>
@@ -25,7 +25,7 @@ const formatTimestamp = (value?: number | null) =>
 
 const PAGE_SIZE = 10
 
-const splitDependencyName = (name?: string | null) => {
+const splitLibraryName = (name?: string | null) => {
   const value = name?.trim() ?? ''
   if (!value) {
     return { scope: '', lib: '' }
@@ -44,36 +44,36 @@ const splitDependencyName = (name?: string | null) => {
 
 export function DashboardPage({
   latestSyncRun,
-  dependencySummary,
+  librarySummary,
   usageTargets,
 }: DashboardData) {
-  const [dependencyFilter, setDependencyFilter] = useState('')
-  const [dependencyPage, setDependencyPage] = useState(1)
+  const [libraryFilter, setLibraryFilter] = useState('')
+  const [libraryPage, setLibraryPage] = useState(1)
   const [usagePage, setUsagePage] = useState(1)
 
-  const filteredDependencies = useMemo(() => {
-    const normalized = dependencyFilter.trim().toLowerCase()
+  const filteredLibraries = useMemo(() => {
+    const normalized = libraryFilter.trim().toLowerCase()
     if (!normalized) {
-      return dependencySummary
+      return librarySummary
     }
-    return dependencySummary.filter((row) =>
+    return librarySummary.filter((row) =>
       (row.dependencyName ?? '').toLowerCase().includes(normalized),
     )
-  }, [dependencyFilter, dependencySummary])
+  }, [libraryFilter, librarySummary])
 
   useEffect(() => {
-    setDependencyPage(1)
-  }, [dependencyFilter])
+    setLibraryPage(1)
+  }, [libraryFilter])
 
-  const totalDependencyPages = Math.max(
+  const totalLibraryPages = Math.max(
     1,
-    Math.ceil(filteredDependencies.length / PAGE_SIZE),
+    Math.ceil(filteredLibraries.length / PAGE_SIZE),
   )
-  const currentDependencyPage = Math.min(dependencyPage, totalDependencyPages)
-  const dependencyStart = (currentDependencyPage - 1) * PAGE_SIZE
-  const pagedDependencies = filteredDependencies.slice(
-    dependencyStart,
-    dependencyStart + PAGE_SIZE,
+  const currentLibraryPage = Math.min(libraryPage, totalLibraryPages)
+  const libraryStart = (currentLibraryPage - 1) * PAGE_SIZE
+  const pagedLibraries = filteredLibraries.slice(
+    libraryStart,
+    libraryStart + PAGE_SIZE,
   )
   const totalUsagePages = Math.max(
     1,
@@ -89,7 +89,7 @@ export function DashboardPage({
   return (
     <div className="dashboard">
       <section>
-        <h1>GitLab Metrics</h1>
+        <h1>Library Metrics</h1>
         <p>Latest sync status.</p>
         {latestSyncRun ? (
           <div className="dashboard-card">
@@ -119,9 +119,9 @@ export function DashboardPage({
 
       <section>
         <div className="dashboard-section-header">
-          <h2>Dependencies</h2>
-          <Link className="dashboard-link" to="/dependencies">
-            See all dependencies
+          <h2>Libraries</h2>
+          <Link className="dashboard-link" to="/libraries">
+            See all libraries
           </Link>
         </div>
         <div className="dashboard-controls">
@@ -129,35 +129,35 @@ export function DashboardPage({
             <span>Filter</span>
             <input
               type="text"
-              value={dependencyFilter}
-              onChange={(event) => setDependencyFilter(event.target.value)}
-              placeholder="Search dependencies..."
+              value={libraryFilter}
+              onChange={(event) => setLibraryFilter(event.target.value)}
+              placeholder="Search libraries..."
             />
           </label>
         </div>
-        {dependencySummary.length === 0 ? (
-          <p>No dependency data for the latest run.</p>
-        ) : filteredDependencies.length === 0 ? (
-          <p>No dependencies match the current filter.</p>
+        {librarySummary.length === 0 ? (
+          <p>No library data for the latest run.</p>
+        ) : filteredLibraries.length === 0 ? (
+          <p>No libraries match the current filter.</p>
         ) : (
           <div className="dashboard-table">
             <table>
               <thead>
                 <tr>
-                  <th>Dependency</th>
+                  <th>Library</th>
                   <th>Usage</th>
                 </tr>
               </thead>
               <tbody>
-                {pagedDependencies.map((row) => {
-                  const { scope, lib } = splitDependencyName(row.dependencyName)
+                {pagedLibraries.map((row) => {
+                  const { scope, lib } = splitLibraryName(row.dependencyName)
                   const canLink = Boolean(lib)
                   return (
                     <tr key={`${row.dependencyId}`}>
                       <td>
                         {canLink ? (
                           <Link
-                            to="/dependency"
+                            to="/library"
                             search={{
                               scope: scope || undefined,
                               lib,
@@ -177,26 +177,26 @@ export function DashboardPage({
             </table>
           </div>
         )}
-        {filteredDependencies.length > PAGE_SIZE ? (
+        {filteredLibraries.length > PAGE_SIZE ? (
           <div className="dashboard-pagination">
             <button
               type="button"
-              onClick={() => setDependencyPage((page) => Math.max(1, page - 1))}
-              disabled={currentDependencyPage <= 1}
+              onClick={() => setLibraryPage((page) => Math.max(1, page - 1))}
+              disabled={currentLibraryPage <= 1}
             >
               Previous
             </button>
             <span>
-              Page {currentDependencyPage} of {totalDependencyPages}
+              Page {currentLibraryPage} of {totalLibraryPages}
             </span>
             <button
               type="button"
               onClick={() =>
-                setDependencyPage((page) =>
-                  Math.min(totalDependencyPages, page + 1),
+                setLibraryPage((page) =>
+                  Math.min(totalLibraryPages, page + 1),
                 )
               }
-              disabled={currentDependencyPage >= totalDependencyPages}
+              disabled={currentLibraryPage >= totalLibraryPages}
             >
               Next
             </button>

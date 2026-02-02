@@ -1,0 +1,26 @@
+# Session 12
+
+**Date:** 2026-01-31
+
+**Prompt/Ask:** Not recorded (predates template).
+
+## Completed
+- Added change-detection requirement to skip unchanged projects and reuse prior run data.
+- Noted optional project_snapshot fields to capture data-source run metadata.
+
+## Current Status
+- LM-1 now specifies commit-based short-circuiting for per-project syncs.
+
+## Plan Coverage
+- Not recorded (predates template).
+
+## Files Changed
+- `.issues/LM-1/issue.md` - added change-detection requirement and schema note.
+- `.issues/LM-1/plan.md` - added change-detection logic.
+- `.issues/LM-1/summary-12.md` - session summary.
+
+## Verification
+- N/A (planning updates only).
+
+## Next Steps
+- Decide whether to add `data_source_sync_id`/`is_unchanged` in schema before implementation.

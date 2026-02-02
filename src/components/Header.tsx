@@ -11,7 +11,7 @@ export default function Header() {
         </div>
 
         <div className="nav-item">
-          <Link to="/dependencies">Dependencies</Link>
+          <Link to="/libraries">Libraries</Link>
         </div>
 
         <div className="nav-item">

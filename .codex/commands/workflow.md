@@ -40,12 +40,12 @@ Begin work properly. Follow this checklist:
 
 4. **If creating new issue:**
    - `/issue create` will enter plan mode automatically
-   - Plan file is at `.issues/GLM-N/plan.md`
+   - Plan file is at `.issues/LM-N/plan.md`
    - Fill in issue.md with requirements and acceptance criteria
 
 5. **Confirm tracking:**
-   - Display: "Working on GLM-N: <title>"
-   - Display: "Remember to run `/issue session GLM-N` after completing work"
+   - Display: "Working on LM-N: <title>"
+   - Display: "Remember to run `/issue session LM-N` after completing work"
 
 ---
 
@@ -68,12 +68,12 @@ Verify the workflow is being followed. Check:
 4. **Checklist output:**
    ```
    Workflow Check:
-   [x] Issue exists: GLM-18
+   [x] Issue exists: LM-18
    [x] Status: in-progress
    [x] Plan exists: yes
    [ ] Session summary current: NO - 2 commits since summary-2.md
 
-   Action needed: Run `/issue session GLM-18`
+   Action needed: Run `/issue session LM-18`
    ```
 
 ---
@@ -101,7 +101,7 @@ Prepare to end the current session. Mandatory steps:
    - Warn if changes exist that should be committed
 
 4. **Confirm completion:**
-   - Display: "Session summaries created for: GLM-N, GLM-M"
+   - Display: "Session summaries created for: LM-N, LM-M"
    - Display: "Safe to end session"
 
 ---
@@ -188,32 +188,32 @@ User Request
 
 ### "User asks to fix a bug"
 1. `/issue match bug description` - check if already tracked
-2. If found: `/issue work GLM-N`
+2. If found: `/issue work LM-N`
 3. If not: `/issue create "Fix: bug description"`
 4. Implement fix
-5. `/issue session GLM-N` - record the fix
-6. If complete: `/issue done GLM-N`
+5. `/issue session LM-N` - record the fix
+6. If complete: `/issue done LM-N`
 
 ### "User asks to add a feature"
 1. `/issue match feature description`
 2. If not found: `/issue create "Add: feature name"`
 3. Plan mode activates - design the approach
 4. Implement in iterations
-5. `/issue session GLM-N` after each work block
-6. `/issue done GLM-N` when feature complete
+5. `/issue session LM-N` after each work block
+6. `/issue done LM-N` when feature complete
 
 ### "Resuming work from previous session"
 1. Check `.issues/index.md` for in-progress issues
-2. `/issue work GLM-N` to see context
+2. `/issue work LM-N` to see context
 3. Read latest `summary-N.md` for where we left off
 4. Continue implementation
-5. `/issue session GLM-N` before ending
+5. `/issue session LM-N` before ending
 
 ### "Quick idea to capture"
 1. `/issue create "Idea: brief description"`
 2. Fill in minimal details in issue.md
 3. Set status to `idea` or `backlog`
-4. `/issue session GLM-N` to record creation
+4. `/issue session LM-N` to record creation
 5. Return later to flesh out
 
 ---
@@ -222,7 +222,7 @@ User Request
 
 Watch for these workflow violations:
 
-- **Making changes without an active issue** - Always have a GLM-N
+- **Making changes without an active issue** - Always have a LM-N
 - **Ending session without session summary** - Never skip `/issue session`
 - **Creating duplicate issues** - Always `/issue match` first
 - **Work not reflected in issue folder** - Plans and summaries must be updated

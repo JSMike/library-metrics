@@ -5,7 +5,7 @@ import {
   useRouterState,
 } from '@tanstack/react-router'
 import { getProjectDetail } from '@/server/reporting'
-import './dependencies.scss'
+import './libraries.scss'
 
 const SEARCH_MAX_LENGTH = 400
 
@@ -19,7 +19,7 @@ const parseSearch = (search: Record<string, unknown>) => ({
   path: typeof search.path === 'string' ? sanitizePath(search.path) : '',
 })
 
-const splitDependencyName = (name?: string | null) => {
+const splitLibraryName = (name?: string | null) => {
   const value = name?.trim() ?? ''
   if (!value) {
     return { scope: '', lib: '' }
@@ -78,14 +78,14 @@ function ProjectDetailPage() {
 
   if (!path) {
     return (
-      <div className="dependencies-page">
-        <header className="dependencies-header">
+      <div className="libraries-page">
+        <header className="libraries-header">
           <div>
             <h1>Project</h1>
             <p>Provide a project path to view details.</p>
           </div>
-          <Link className="dependencies-link" to="/dependencies">
-            Back to dependencies
+          <Link className="libraries-link" to="/libraries">
+            Back to libraries
           </Link>
         </header>
       </div>
@@ -94,14 +94,14 @@ function ProjectDetailPage() {
 
   if (!detail) {
     return (
-      <div className="dependencies-page">
-        <header className="dependencies-header">
+      <div className="libraries-page">
+        <header className="libraries-header">
           <div>
             <h1>Project</h1>
             <p>No project details were found for {path}.</p>
           </div>
-          <Link className="dependencies-link" to="/dependencies">
-            Back to dependencies
+          <Link className="libraries-link" to="/libraries">
+            Back to libraries
           </Link>
         </header>
       </div>
@@ -140,35 +140,35 @@ function ProjectDetailPage() {
   )
 
   return (
-    <div className="dependencies-page">
-      <header className="dependencies-header">
+    <div className="libraries-page">
+      <header className="libraries-header">
         <div>
           <h1>{detail.projectName}</h1>
-          <p>Dependency inventory for the latest sync run.</p>
+          <p>Library inventory for the latest sync run.</p>
         </div>
-        <Link className="dependencies-link" to="/dependencies">
-          Back to dependencies
+        <Link className="libraries-link" to="/libraries">
+          Back to libraries
         </Link>
       </header>
 
-      <div className="dependencies-metadata">
+      <div className="libraries-metadata">
         <div>
-          <span className="dependencies-label">Path</span>
+          <span className="libraries-label">Path</span>
           <span>{detail.projectPath || '—'}</span>
         </div>
         <div>
-          <span className="dependencies-label">Last activity</span>
+          <span className="libraries-label">Last activity</span>
           <span>{formatTimestamp(detail.lastActivityAt)}</span>
         </div>
         <div>
-          <span className="dependencies-label">GitLab</span>
-          <span className="dependencies-links">
+          <span className="libraries-label">GitLab</span>
+          <span className="libraries-links">
             {codeUrl ? (
               <a href={codeUrl} target="_blank" rel="noreferrer">
                 Code
               </a>
             ) : (
-              <span className="dependencies-muted">—</span>
+              <span className="libraries-muted">—</span>
             )}
             {membersUrl ? (
               <a href={membersUrl} target="_blank" rel="noreferrer">
@@ -180,13 +180,13 @@ function ProjectDetailPage() {
       </div>
 
       {detail.dependencies.length === 0 ? (
-        <p>No dependency data for this project.</p>
+        <p>No library data for this project.</p>
       ) : (
-        <div className="dependencies-table">
+        <div className="libraries-table">
           <table>
             <thead>
               <tr>
-                <th>Dependency</th>
+                <th>Library</th>
                 <th>Version</th>
               </tr>
             </thead>
@@ -195,7 +195,7 @@ function ProjectDetailPage() {
                 <tr key={`${row.dependencyId}-${row.versionResolved}`}>
                   <td>
                     {(() => {
-                      const { scope, lib } = splitDependencyName(
+                      const { scope, lib } = splitLibraryName(
                         row.dependencyName,
                       )
                       if (!lib) {
@@ -203,7 +203,7 @@ function ProjectDetailPage() {
                       }
                       return (
                         <Link
-                          to="/dependency"
+                          to="/library"
                           search={{
                             scope: scope || undefined,
                             lib,
@@ -232,7 +232,7 @@ function ProjectDetailPage() {
           {Array.from(sourceUsageByTarget.values()).map((target) => (
             <div key={target.targetKey}>
               <h3>{target.targetTitle}</h3>
-              <div className="dependencies-table">
+              <div className="libraries-table">
                 <table>
                   <thead>
                     <tr>
@@ -259,7 +259,7 @@ function ProjectDetailPage() {
                               {row.subTargetTitle}
                             </Link>
                           ) : (
-                            <span className="dependencies-muted">—</span>
+                            <span className="libraries-muted">—</span>
                           )}
                         </td>
                         <td>

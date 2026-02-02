@@ -6,6 +6,6 @@ export default defineConfig({
   out: "./drizzle",
   dialect: "sqlite",
   dbCredentials: {
-    url: process.env.DB_FILE_NAME ?? "./data/gitlab-metrics.sqlite",
+    url: process.env.DB_FILE_NAME ?? "./data/library-metrics.sqlite",
   },
 });

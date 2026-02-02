@@ -4,7 +4,7 @@ This folder contains issue tracking for the repository. Each issue has its own f
 
 ## Structure
 
-Each `GLM-N/` folder contains:
+Each `LM-N/` folder contains:
 - `issue.md` - Requirements and metadata (always present)
 - `plan.md` - Implementation approach (created when planning)
 - `summary-1.md`, `summary-2.md`, ... - Session progress records (created per work session)

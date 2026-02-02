@@ -1,6 +1,6 @@
 # AI Project Guide
 
-This document provides project-specific guidance for AI agents working in the `gitlab-metrics` repository.
+This document provides project-specific guidance for AI agents working in the `library-metrics` repository.
 
 ## Project Overview
 
@@ -36,11 +36,11 @@ TanStack Start app running on Bun, with tRPC and Drizzle (bun:sqlite) for a loca
 - Monorepos: multiple `package.json` files are stored per project path.
 - Usage queries live in `src/lib/usage-queries.ts` and are stored in `usage_result` with target/sub-target/query keys.
 - DB is local SQLite (tracked in git) at `./data/`; view with Datasette via `bun run db:view`.
-- tRPC API `/api/trpc/*` exposes `latestSyncRun`, `dependencySummary`, `usageSummary`; `/dashboard` consumes these.
+- tRPC API `/api/trpc/*` exposes `latestSyncRun`, `librarySummary`, `usageSummary`; `/dashboard` consumes these.
 
 ### Current Defaults
 
-- `DB_FILE_NAME=./data/gitlab-metrics.sqlite`
+- `DB_FILE_NAME=./data/library-metrics.sqlite`
 - `TRPC_BASE_URL=http://localhost:3000`
 - `GITLAB_BASE_URL=https://gitlab.com`
 - `GITLAB_API_VERSION=v4`
@@ -70,7 +70,7 @@ TanStack Start app running on Bun, with tRPC and Drizzle (bun:sqlite) for a loca
 - Use Drizzle with `bun:sqlite` for the local DB.
 - Run migrations via the Bun migrator: `bun run db:migrate`.
 - Prefer normalized core tables with JSON payload columns for raw API responses.
-- SQLite file is stored in `./data/gitlab-metrics.sqlite` by default and tracked in git.
+- SQLite file is stored in `./data/library-metrics.sqlite` by default and tracked in git.
 - Use `DB_FILE_NAME` to override the path (see `.env.example`).
 
 ## Common Commands

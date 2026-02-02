@@ -10,6 +10,9 @@ Generated: 2026-02-02
 | --- | --- | --- | --- |
 | [LM-6](./LM-6/issue.md) | Make /projects search optional for header link | low | |
 | [LM-8](./LM-8/issue.md) | Optimize GitLab sync throttling and rate-limit handling | high | |
+| [LM-15](./LM-15/issue.md) | Fix Vite build failing on bun:sqlite bundling | medium | |
+| [LM-16](./LM-16/issue.md) | Fix preview DB path when running Nitro output | low | |
+| [LM-17](./LM-17/issue.md) | Copy SQLite DB into .output for deployable builds | low | |
 
 ### Ready
 

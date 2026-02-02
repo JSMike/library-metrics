@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun --bun vite dev --port 3000",
-    "build": "bun --bun vite build",
+    "build": "bun --bun vite build && bun --bun run scripts/copy-db.ts",
     "preview": "bun --bun vite preview",
     "test": "bun --bun vitest run",
     "db:generate": "npx drizzle-kit generate",

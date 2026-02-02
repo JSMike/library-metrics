@@ -145,3 +145,5 @@ bun --bun run sync:gitlab -- --force
 bun run db:migrate
 bun run db:view
 ```
+
+Builds are emitted to `.output/` (Nitro's default). `bun --bun run preview` serves the `.output` build, so run `build` first.

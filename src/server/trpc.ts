@@ -5,7 +5,7 @@ import {
   fetchProjectSummary,
   fetchUsageSummary,
   fetchUsageTargets,
-} from './reporting'
+} from './reporting.server'
 
 export type TrpcContext = {
   request: Request

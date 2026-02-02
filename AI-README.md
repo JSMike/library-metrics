@@ -44,6 +44,8 @@ TanStack Start app running on Bun, with tRPC and Drizzle (bun:sqlite) for a loca
 - `TRPC_BASE_URL=http://localhost:3000`
 - `GITLAB_BASE_URL=https://gitlab.com`
 - `GITLAB_API_VERSION=v4`
+- `GITLAB_GROUP_PATH` optional (single group)
+- `GITLAB_GROUP_INCLUDE_PATHS` / `GITLAB_GROUP_EXCLUDE_PATHS` optional (comma-separated)
 - `GITLAB_REQUEST_CONCURRENCY=3`
 - `GITLAB_REQUEST_DELAY_MS=0`
 - `GITLAB_REQUEST_TIMEOUT_MS=30000`

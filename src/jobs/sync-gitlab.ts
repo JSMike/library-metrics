@@ -428,46 +428,115 @@ const getExtension = (path: string) => {
   return lower.slice(idx);
 };
 
-const ensureGroup = async (groupInfo: GitLabGroupResponse) => {
-  const existing = await db
-    .select()
-    .from(gitlabGroup)
-    .where(eq(gitlabGroup.gitlabId, groupInfo.id));
+const normalizeGroupPath = (path: string) =>
+  path.trim().replace(/^\/+|\/+$/g, "").toLowerCase();
 
-  if (existing.length > 0) {
+const isPathMatch = (candidate: string, target: string) =>
+  candidate === target || candidate.startsWith(`${target}/`);
+
+const buildGroupFilter = (includePaths: string[], excludePaths: string[]) => {
+  const includes = includePaths
+    .map(normalizeGroupPath)
+    .filter((value) => value.length > 0);
+  const excludes = excludePaths
+    .map(normalizeGroupPath)
+    .filter((value) => value.length > 0);
+
+  const isIncluded = (path: string) => {
+    const normalized = normalizeGroupPath(path);
+    const inScope =
+      includes.length === 0 ||
+      includes.some((includePath) => isPathMatch(normalized, includePath));
+    if (!inScope) {
+      return false;
+    }
+    return !excludes.some((excludePath) =>
+      isPathMatch(normalized, excludePath),
+    );
+  };
+
+  return { includes, excludes, isIncluded };
+};
+
+const selectRootGroups = (groups: GitLabGroupResponse[]) => {
+  const normalizedPaths = groups.map((group) =>
+    normalizeGroupPath(group.full_path),
+  );
+  return groups.filter((group, idx) => {
+    const normalized = normalizedPaths[idx];
+    return !normalizedPaths.some(
+      (other, otherIdx) =>
+        otherIdx !== idx && isPathMatch(normalized, other),
+    );
+  });
+};
+
+const namespaceToGroupInfo = (
+  namespace: NonNullable<GitLabProjectResponse["namespace"]>,
+): GitLabGroupResponse => ({
+  id: namespace.id,
+  name: namespace.name,
+  path: namespace.path,
+  full_path: namespace.full_path,
+  web_url: namespace.web_url,
+  parent_id: namespace.parent_id ?? null,
+});
+
+const buildGroupMap = async () => {
+  const rows = await db
+    .select({
+      id: gitlabGroup.id,
+      gitlabId: gitlabGroup.gitlabId,
+    })
+    .from(gitlabGroup);
+  const map = new Map<number, number>();
+  for (const row of rows) {
+    map.set(row.gitlabId, row.id);
+  }
+  return map;
+};
+
+const ensureGroup = async (
+  groupInfo: GitLabGroupResponse,
+  groupMap: Map<number, number>,
+  parentGroupId?: number | null,
+) => {
+  const existingId = groupMap.get(groupInfo.id);
+  if (existingId) {
     await db
       .update(gitlabGroup)
       .set({
         path: groupInfo.full_path,
         name: groupInfo.name,
         webUrl: groupInfo.web_url ?? null,
+        parentGroupId: parentGroupId ?? null,
       })
-      .where(eq(gitlabGroup.gitlabId, groupInfo.id));
-    return existing[0];
+      .where(eq(gitlabGroup.id, existingId));
+    return existingId;
   }
 
   await db.insert(gitlabGroup).values({
     gitlabId: groupInfo.id,
+    parentGroupId: parentGroupId ?? null,
     path: groupInfo.full_path,
     name: groupInfo.name,
     webUrl: groupInfo.web_url ?? null,
   });
 
-  const inserted = await db
-    .select()
-    .from(gitlabGroup)
-    .where(eq(gitlabGroup.gitlabId, groupInfo.id));
-  return inserted[0];
+  const row = sqlite.query("select last_insert_rowid() as id").get() as {
+    id: number;
+  };
+  groupMap.set(groupInfo.id, row.id);
+  return row.id;
 };
 
-const buildProjectMap = async (groupId: number) => {
+const buildProjectMap = async () => {
   const rows = await db
     .select({
       id: project.id,
       gitlabId: project.gitlabId,
     })
-    .from(project)
-    .where(eq(project.groupId, groupId));
+    .from(project);
 
   const map = new Map<number, number>();
   for (const row of rows) {
@@ -488,6 +557,7 @@ const ensureProject = async (
       .set({
         pathWithNamespace: projectInfo.path_with_namespace,
         name: projectInfo.name,
+        groupId,
       })
       .where(eq(project.id, existingId));
     return existingId;
@@ -730,25 +800,128 @@ const runSync = async () => {
   let hadErrors = false;
 
   try {
-    const { data: groupInfo } = await fetchJson<GitLabGroupResponse>(
-      config,
-      throttler,
-      rateLimiter,
-      `/groups/${encodeURIComponent(config.groupPath)}`,
+    const groupMap = await buildGroupMap();
+    const groupFilter = buildGroupFilter(
+      config.groupIncludePaths,
+      config.groupExcludePaths,
     );
-
-    const groupRow = await ensureGroup(groupInfo);
-    const projectMap = await buildProjectMap(groupRow.id);
-    const projects = await fetchAllPages<GitLabProjectResponse>(
+    const discoveredGroups = await fetchAllPages<GitLabGroupResponse>(
       config,
       throttler,
       rateLimiter,
-      `/groups/${groupInfo.id}/projects?include_subgroups=true`,
+      "/groups",
+    );
+    const groupById = new Map<number, GitLabGroupResponse>();
+    for (const group of discoveredGroups) {
+      groupById.set(group.id, group);
+    }
+    const groupByPath = new Map<string, GitLabGroupResponse>();
+    for (const group of groupById.values()) {
+      groupByPath.set(normalizeGroupPath(group.full_path), group);
+    }
+
+    if (groupFilter.includes.length > 0) {
+      logInfo(
+        `[sync] group include scope: ${groupFilter.includes.join(", ")}`,
+      );
+    }
+    if (groupFilter.excludes.length > 0) {
+      logInfo(
+        `[sync] group exclude scope: ${groupFilter.excludes.join(", ")}`,
+      );
+    }
+
+    for (const includePath of config.groupIncludePaths) {
+      const normalizedInclude = normalizeGroupPath(includePath);
+      if (groupByPath.has(normalizedInclude)) {
+        continue;
+      }
+      try {
+        const { data: groupInfo } = await fetchJson<GitLabGroupResponse>(
+          config,
+          throttler,
+          rateLimiter,
+          `/groups/${encodeURIComponent(includePath)}`,
+        );
+        if (!groupById.has(groupInfo.id)) {
+          groupById.set(groupInfo.id, groupInfo);
+          groupByPath.set(normalizeGroupPath(groupInfo.full_path), groupInfo);
+        }
+      } catch (error) {
+        logWarn(`[sync] unable to resolve group ${includePath}:`, error);
+      }
+    }
+
+    const allGroups = Array.from(groupById.values());
+    const scopedGroups = allGroups.filter((group) =>
+      groupFilter.isIncluded(group.full_path),
+    );
+    const sortedGroups = [...scopedGroups].sort((left, right) => {
+      const leftDepth = left.full_path.split("/").length;
+      const rightDepth = right.full_path.split("/").length;
+      if (leftDepth !== rightDepth) {
+        return leftDepth - rightDepth;
+      }
+      return left.full_path.localeCompare(right.full_path);
+    });
+
+    for (const groupInfo of sortedGroups) {
+      const parentGroupId = groupInfo.parent_id
+        ? groupMap.get(groupInfo.parent_id) ?? null
+        : null;
+      await ensureGroup(groupInfo, groupMap, parentGroupId);
+    }
+
+    if (scopedGroups.length === 0) {
+      logWarn(
+        "[sync] no groups matched the current scope; adjust include/exclude settings if needed",
+      );
+    }
+
+    const rootGroups =
+      scopedGroups.length > 0 ? selectRootGroups(scopedGroups) : [];
+    if (rootGroups.length > 0) {
+      logInfo(
+        `[sync] discovered ${scopedGroups.length} groups (${rootGroups.length} root groups)`,
+      );
+    }
+
+    const projectMap = await buildProjectMap();
+    const projectById = new Map<number, GitLabProjectResponse>();
+    const projectFallbackGroup = new Map<number, number>();
+
+    for (const groupInfo of rootGroups) {
+      const parentGroupId = groupInfo.parent_id
+        ? groupMap.get(groupInfo.parent_id) ?? null
+        : null;
+      const groupRowId = await ensureGroup(
+        groupInfo,
+        groupMap,
+        parentGroupId,
+      );
+      const groupProjects = await fetchAllPages<GitLabProjectResponse>(
+        config,
+        throttler,
+        rateLimiter,
+        `/groups/${groupInfo.id}/projects?include_subgroups=true`,
+      );
+      logInfo(
+        `[sync] group "${groupInfo.full_path}" (${groupInfo.id}) - ${groupProjects.length} projects`,
+      );
+      for (const projectInfo of groupProjects) {
+        if (projectById.has(projectInfo.id)) {
+          continue;
+        }
+        projectById.set(projectInfo.id, projectInfo);
+        projectFallbackGroup.set(projectInfo.id, groupRowId);
+      }
+    }
+
+    const projects = Array.from(projectById.values()).sort((left, right) =>
+      left.path_with_namespace.localeCompare(right.path_with_namespace),
     );
     const totalProjects = projects.length;
-    logInfo(
-      `[sync] connected to GitLab group "${groupInfo.full_path}" (${groupInfo.id}) - ${totalProjects} projects`,
-    );
+    logInfo(`[sync] total projects in scope: ${totalProjects}`);
 
     let completedProjects = 0;
 
@@ -760,8 +933,27 @@ const runSync = async () => {
       let projectStatus = "ok";
       try {
         const projectStartedAt = Date.now();
+        const fallbackGroupId = projectFallbackGroup.get(projectInfo.id) ?? null;
+        const namespace = projectInfo.namespace ?? null;
+        let projectGroupId = fallbackGroupId;
+        if (namespace && namespace.kind !== "user") {
+          const groupInfo = namespaceToGroupInfo(namespace);
+          const parentGroupId = groupInfo.parent_id
+            ? groupMap.get(groupInfo.parent_id) ?? null
+            : null;
+          projectGroupId = await ensureGroup(
+            groupInfo,
+            groupMap,
+            parentGroupId,
+          );
+        }
+        if (!projectGroupId) {
+          logWarn(`[sync] skipping ${projectLabel}: missing group mapping`);
+          projectStatus = "skipped";
+          continue;
+        }
         const projectId = await ensureProject(
-          groupRow.id,
+          projectGroupId,
           projectInfo,
           projectMap,
         );

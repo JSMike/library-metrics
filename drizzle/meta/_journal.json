@@ -22,6 +22,13 @@
       "when": 1769997956565,
       "tag": "0002_add_project_pending_deletion",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1770058451627,
+      "tag": "0003_colossal_betty_brant",
+      "breakpoints": true
     }
   ]
 }

@@ -3,13 +3,14 @@ import { Throttler } from "./throttle";
 export type GitLabConfig = {
   baseUrl: string;
   token: string;
-  groupPath: string;
   apiVersion: string;
   concurrency: number;
   delayMs: number;
   timeoutMs: number;
   retryCount: number;
   retryDelayMs: number;
+  groupIncludePaths: string[];
+  groupExcludePaths: string[];
 };
 
 export type GitLabGroupResponse = {
@@ -17,6 +18,17 @@ export type GitLabGroupResponse = {
   name: string;
   path: string;
   full_path: string;
+  web_url?: string;
+  parent_id?: number | null;
+};
+
+export type GitLabNamespaceResponse = {
+  id: number;
+  name: string;
+  path: string;
+  full_path: string;
+  kind?: string;
+  parent_id?: number | null;
   web_url?: string;
 };
 
@@ -30,6 +42,7 @@ export type GitLabProjectResponse = {
   last_activity_at: string | null;
   marked_for_deletion_on?: string | null;
   marked_for_deletion_at?: string | null;
+  namespace?: GitLabNamespaceResponse | null;
 };
 
 export type GitLabCommitResponse = {
@@ -74,17 +87,44 @@ const requireEnv = (key: string): string => {
   return value;
 };
 
+const normalizeGroupPath = (value: string) =>
+  value.trim().replace(/^\/+|\/+$/g, "");
+
+const parseListEnv = (key: string) => {
+  const raw = process.env[key];
+  if (!raw) {
+    return [];
+  }
+  return raw
+    .split(",")
+    .map((value) => normalizeGroupPath(value))
+    .filter((value) => value.length > 0);
+};
+
+const dedupe = (values: string[]) => Array.from(new Set(values));
+
 export const getGitLabConfig = (): GitLabConfig => {
+  const groupPathRaw = process.env.GITLAB_GROUP_PATH ?? "";
+  const groupPath = normalizeGroupPath(groupPathRaw);
+  const groupIncludePaths = dedupe([
+    ...parseListEnv("GITLAB_GROUP_INCLUDE_PATHS"),
+    ...(groupPath ? [groupPath] : []),
+  ]);
+  const groupExcludePaths = dedupe(
+    parseListEnv("GITLAB_GROUP_EXCLUDE_PATHS"),
+  );
+
   return {
     baseUrl: getEnv("GITLAB_BASE_URL", "https://gitlab.com"),
     token: requireEnv("GITLAB_TOKEN"),
-    groupPath: requireEnv("GITLAB_GROUP_PATH"),
     apiVersion: getEnv("GITLAB_API_VERSION", DEFAULT_API_VERSION),
     concurrency: getNumberEnv("GITLAB_REQUEST_CONCURRENCY", 3),
     delayMs: getNumberEnv("GITLAB_REQUEST_DELAY_MS", 0),
     timeoutMs: getNumberEnv("GITLAB_REQUEST_TIMEOUT_MS", 30000),
     retryCount: Math.max(0, getNumberEnv("GITLAB_REQUEST_RETRIES", 1)),
     retryDelayMs: Math.max(0, getNumberEnv("GITLAB_REQUEST_RETRY_DELAY_MS", 2000)),
+    groupIncludePaths,
+    groupExcludePaths,
   };
 };
 

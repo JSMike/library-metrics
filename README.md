@@ -60,9 +60,14 @@ bun install
 
 Copy `.env.example` to `.env` and set:
 
-- `GITLAB_GROUP_PATH`
 - `GITLAB_TOKEN`
 - `DB_FILE_NAME` (defaults to `./data/library-metrics.sqlite`)
+- Optional scope controls:
+  - `GITLAB_GROUP_PATH` (single group path)
+  - `GITLAB_GROUP_INCLUDE_PATHS` / `GITLAB_GROUP_EXCLUDE_PATHS` (comma-separated)
+
+Group paths are matched by full-path prefix, so including `my-group/eng` will also include nested subgroups.
+If no group scope is provided, the sync scans every group you are a member of.
 
 ### Migrate Database
 

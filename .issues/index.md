@@ -49,3 +49,5 @@ Generated: 2026-02-02
 | [LM-19](./LM-19/issue.md) | Preserve library/usage data on non-force sync | 2026-02-02 |
 | [LM-20](./LM-20/issue.md) | Add project/library counts to dashboard cards | 2026-02-02 |
 | [LM-21](./LM-21/issue.md) | Add range summary to dashboard pagination | 2026-02-02 |
+| [LM-23](./LM-23/issue.md) | Filter project list to projects with package.json | 2026-02-02 |
+| [LM-22](./LM-22/issue.md) | Support scanning multiple GitLab groups accessible to the user | 2026-02-02 |

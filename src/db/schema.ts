@@ -45,6 +45,9 @@ export const gitlabGroup = sqliteTable(
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
     gitlabId: integer("gitlab_id").notNull(),
+    parentGroupId: integer("parent_group_id").references(
+      () => gitlabGroup.id,
+    ),
     path: text("path").notNull(),
     name: text("name").notNull(),
     webUrl: text("web_url"),
@@ -52,6 +55,7 @@ export const gitlabGroup = sqliteTable(
   (table) => ({
     gitlabIdIdx: uniqueIndex("gitlab_group_gitlab_id_idx").on(table.gitlabId),
     pathIdx: uniqueIndex("gitlab_group_path_idx").on(table.path),
+    parentIdx: index("gitlab_group_parent_idx").on(table.parentGroupId),
   }),
 );
 

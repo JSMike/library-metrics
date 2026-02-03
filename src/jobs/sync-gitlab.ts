@@ -82,21 +82,18 @@ const lockfileNames = [
   "bun.lockb",
 ] as const;
 
-const lockfileSearchQueries = [
-  "path:package-lock.json -path:node_modules",
-  "path:npm-shrinkwrap.json -path:node_modules",
-  "path:yarn.lock -path:node_modules",
-  "path:pnpm-lock.yaml -path:node_modules",
-  "path:bun.lock -path:node_modules",
-  "path:bun.lockb -path:node_modules",
-  "path:deno.lock -path:node_modules",
-];
-const rootPackageJsonSearchQuery = "path:package.json -path:node_modules";
-const usageSearchExcludePath = "-path:node_modules";
-const blobSearchType = "advanced";
+const zoektLockfileSearchQuery =
+  "file:(package-lock\\.json|npm-shrinkwrap\\.json|yarn\\.lock|pnpm-lock\\.yaml|bun\\.lockb?|deno\\.lock) -file:node_modules";
+const zoektRootPackageJsonSearchQuery =
+  "file:^package.json$ -file:node_modules";
+const usageSearchExcludeFile = "-file:node_modules";
+const blobSearchType = "zoekt";
 
-const buildUsageSearchQuery = (searchText: string, extension: string) =>
-  `${searchText} extension:${extension} ${usageSearchExcludePath}`.trim();
+const buildUsageSearchQuery = (searchText: string, extensions: string[]) => {
+  const extPattern = extensions.map((ext) => ext.toLowerCase()).join("|");
+  const fileFilter = extPattern ? `file:\\.(${extPattern})$` : "";
+  return `${searchText} ${fileFilter} ${usageSearchExcludeFile}`.trim();
+};
 
 const lockfileKindMap: Record<string, (typeof fileKinds)[number]> = {
   "package-lock.json": "package_lock",
@@ -143,9 +140,12 @@ const isBlobSearchUnsupported = (error: unknown) => {
   if (typeof body !== "string") {
     return false;
   }
+  const normalized = body.toLowerCase();
   return (
-    body.includes("Scope supported only with advanced search") ||
-    body.includes("exact code search")
+    normalized.includes("scope supported only with advanced search") ||
+    normalized.includes("exact code search") ||
+    normalized.includes("search_type") ||
+    normalized.includes("zoekt")
   );
 };
 
@@ -516,17 +516,6 @@ const selectRootGroups = (groups: GitLabGroupResponse[]) => {
   });
 };
 
-const namespaceToGroupInfo = (
-  namespace: NonNullable<GitLabProjectResponse["namespace"]>,
-): GitLabGroupResponse => ({
-  id: namespace.id,
-  name: namespace.name,
-  path: namespace.path,
-  full_path: namespace.full_path,
-  web_url: namespace.web_url,
-  parent_id: namespace.parent_id ?? null,
-});
-
 const buildGroupMap = async () => {
   const rows = await db
     .select({
@@ -855,22 +844,6 @@ const runSync = async () => {
       config.groupIncludePaths,
       config.groupExcludePaths,
     );
-    const discoveredGroups = await fetchAllPages<GitLabGroupResponse>(
-      config,
-      throttler,
-      rateLimiter,
-      "/groups",
-      buildPageLogOptions("groups"),
-    );
-    const groupById = new Map<number, GitLabGroupResponse>();
-    for (const group of discoveredGroups) {
-      groupById.set(group.id, group);
-    }
-    const groupByPath = new Map<string, GitLabGroupResponse>();
-    for (const group of groupById.values()) {
-      groupByPath.set(normalizeGroupPath(group.full_path), group);
-    }
-
     if (groupFilter.includes.length > 0) {
       logInfo(
         `[sync] group include scope: ${groupFilter.includes.join(", ")}`,
@@ -882,102 +855,222 @@ const runSync = async () => {
       );
     }
 
-    for (const includePath of config.groupIncludePaths) {
-      const normalizedInclude = normalizeGroupPath(includePath);
-      if (groupByPath.has(normalizedInclude)) {
-        continue;
+    const isTopLevelIncluded = (path: string) => {
+      const normalized = normalizeGroupPath(path);
+      if (
+        groupFilter.excludes.some((excludePath) =>
+          isPathMatch(normalized, excludePath),
+        )
+      ) {
+        return false;
+      }
+      if (groupFilter.includes.length === 0) {
+        return true;
+      }
+      return groupFilter.includes.some((includePath) =>
+        isPathMatch(includePath, normalized),
+      );
+    };
+
+    const loadGroupContext = async (topLevelOnly: boolean) => {
+      const groupPath = topLevelOnly
+        ? "/groups?top_level_only=true"
+        : "/groups";
+      const groupLogLabel = topLevelOnly ? "groups (top-level)" : "groups";
+      const discoveredGroups = await fetchAllPages<GitLabGroupResponse>(
+        config,
+        throttler,
+        rateLimiter,
+        groupPath,
+        buildPageLogOptions(groupLogLabel),
+      );
+      const groupById = new Map<number, GitLabGroupResponse>();
+      for (const group of discoveredGroups) {
+        groupById.set(group.id, group);
+      }
+      const groupByPath = new Map<string, GitLabGroupResponse>();
+      for (const group of groupById.values()) {
+        groupByPath.set(normalizeGroupPath(group.full_path), group);
+      }
+
+      for (const includePath of config.groupIncludePaths) {
+        const normalizedInclude = normalizeGroupPath(includePath);
+        if (groupByPath.has(normalizedInclude)) {
+          continue;
+        }
+        try {
+          const { data: groupInfo } = await fetchJson<GitLabGroupResponse>(
+            config,
+            throttler,
+            rateLimiter,
+            `/groups/${encodeURIComponent(includePath)}`,
+          );
+          if (!groupById.has(groupInfo.id)) {
+            groupById.set(groupInfo.id, groupInfo);
+            groupByPath.set(
+              normalizeGroupPath(groupInfo.full_path),
+              groupInfo,
+            );
+          }
+        } catch (error) {
+          logWarn(`[sync] unable to resolve group ${includePath}:`, error);
+        }
+      }
+
+      const allGroups = Array.from(groupById.values());
+      const matchesScope = topLevelOnly
+        ? isTopLevelIncluded
+        : groupFilter.isIncluded;
+      const scopedGroups = allGroups.filter((group) =>
+        matchesScope(group.full_path),
+      );
+      const sortedGroups = [...scopedGroups].sort((left, right) => {
+        const leftDepth = left.full_path.split("/").length;
+        const rightDepth = right.full_path.split("/").length;
+        if (leftDepth !== rightDepth) {
+          return leftDepth - rightDepth;
+        }
+        return left.full_path.localeCompare(right.full_path);
+      });
+
+      for (const groupInfo of sortedGroups) {
+        const parentGroupId = groupInfo.parent_id
+          ? groupMap.get(groupInfo.parent_id) ?? null
+          : null;
+        await ensureGroup(groupInfo, groupMap, parentGroupId);
+      }
+
+      if (scopedGroups.length === 0) {
+        logWarn(
+          "[sync] no groups matched the current scope; adjust include/exclude settings if needed",
+        );
+      }
+
+      const rootGroups =
+        scopedGroups.length > 0 ? selectRootGroups(scopedGroups) : [];
+      if (rootGroups.length > 0) {
+        logInfo(
+          `[sync] discovered ${scopedGroups.length} groups (${rootGroups.length} root groups)`,
+        );
+      }
+
+      return { groupById, groupByPath, scopedGroups, rootGroups };
+    };
+
+    let useZoektSearch = true;
+    let groupContext = await loadGroupContext(true);
+    let { rootGroups } = groupContext;
+    const groupInfoCache = new Map<number, GitLabGroupResponse | null>();
+    const groupRowCache = new Map<number, number | null>();
+
+    const fetchGroupInfoById = async (groupId: number) => {
+      if (groupInfoCache.has(groupId)) {
+        return groupInfoCache.get(groupId) ?? null;
       }
       try {
-        const { data: groupInfo } = await fetchJson<GitLabGroupResponse>(
+        const { data } = await fetchJson<GitLabGroupResponse>(
           config,
           throttler,
           rateLimiter,
-          `/groups/${encodeURIComponent(includePath)}`,
+          `/groups/${groupId}`,
         );
-        if (!groupById.has(groupInfo.id)) {
-          groupById.set(groupInfo.id, groupInfo);
-          groupByPath.set(normalizeGroupPath(groupInfo.full_path), groupInfo);
-        }
+        groupInfoCache.set(groupId, data);
+        return data;
       } catch (error) {
-        logWarn(`[sync] unable to resolve group ${includePath}:`, error);
+        logWarn(`[sync] failed to load group ${groupId}`, error);
+        groupInfoCache.set(groupId, null);
+        return null;
       }
-    }
+    };
 
-    const allGroups = Array.from(groupById.values());
-    const scopedGroups = allGroups.filter((group) =>
-      groupFilter.isIncluded(group.full_path),
-    );
-    const sortedGroups = [...scopedGroups].sort((left, right) => {
-      const leftDepth = left.full_path.split("/").length;
-      const rightDepth = right.full_path.split("/").length;
-      if (leftDepth !== rightDepth) {
-        return leftDepth - rightDepth;
+    const ensureGroupChain = async (
+      groupId: number,
+      visited = new Set<number>(),
+    ): Promise<number | null> => {
+      if (groupRowCache.has(groupId)) {
+        return groupRowCache.get(groupId) ?? null;
       }
-      return left.full_path.localeCompare(right.full_path);
-    });
-
-    for (const groupInfo of sortedGroups) {
-      const parentGroupId = groupInfo.parent_id
-        ? groupMap.get(groupInfo.parent_id) ?? null
+      if (visited.has(groupId)) {
+        return groupMap.get(groupId) ?? null;
+      }
+      visited.add(groupId);
+      const groupInfo = await fetchGroupInfoById(groupId);
+      if (!groupInfo) {
+        groupRowCache.set(groupId, null);
+        return null;
+      }
+      const parentRowId = groupInfo.parent_id
+        ? await ensureGroupChain(groupInfo.parent_id, visited)
         : null;
-      await ensureGroup(groupInfo, groupMap, parentGroupId);
-    }
-
-    if (scopedGroups.length === 0) {
-      logWarn(
-        "[sync] no groups matched the current scope; adjust include/exclude settings if needed",
-      );
-    }
-
-    const rootGroups =
-      scopedGroups.length > 0 ? selectRootGroups(scopedGroups) : [];
-    if (rootGroups.length > 0) {
-      logInfo(
-        `[sync] discovered ${scopedGroups.length} groups (${rootGroups.length} root groups)`,
-      );
-    }
+      const rowId = await ensureGroup(groupInfo, groupMap, parentRowId);
+      groupRowCache.set(groupId, rowId);
+      return rowId;
+    };
 
     const searchQueries = [
-      ...lockfileSearchQueries.map((query) => ({
+      {
         label: "lockfile",
-        query,
-      })),
+        query: zoektLockfileSearchQuery,
+      },
       {
         label: "root package.json",
-        query: rootPackageJsonSearchQuery,
+        query: zoektRootPackageJsonSearchQuery,
         acceptPath: (path: string) => path === "package.json" && isRootPath(path),
       },
     ] as const;
+    const shouldIncludeProject = (projectInfo: GitLabProjectResponse) =>
+      groupFilter.isIncluded(projectInfo.path_with_namespace);
 
     const projectMap = await buildProjectMap();
     const projectById = new Map<number, GitLabProjectResponse>();
     const projectFallbackGroup = new Map<number, number>();
     const searchProjectIds = new Set<number>();
     const fallbackGroups = new Set<number>();
+    const searchLockfilePathsByProject = new Map<number, Set<string>>();
+    const searchPackageJsonPathsByProject = new Map<number, Set<string>>();
+    const addSearchPath = (
+      map: Map<number, Set<string>>,
+      projectId: number,
+      path: string,
+    ) => {
+      let paths = map.get(projectId);
+      if (!paths) {
+        paths = new Set<string>();
+        map.set(projectId, paths);
+      }
+      paths.add(path);
+    };
+    let zoektFailed = false;
 
-    for (const groupInfo of rootGroups) {
-      let groupHadError = false;
-      for (const searchQuery of searchQueries) {
-        const searchPath = `/groups/${groupInfo.id}/search?scope=blobs&search=${encodeURIComponent(
-          searchQuery.query,
-        )}&search_type=${encodeURIComponent(blobSearchType)}`;
-        try {
-          const results = await fetchAllPages<GitLabSearchBlobResponse>(
-            config,
-            throttler,
-            rateLimiter,
-            searchPath,
-            buildPageLogOptions(
-              `search ${searchQuery.label} ${groupInfo.full_path}`,
-            ),
-          );
-          for (const result of results) {
-            if (!result.path) {
-              continue;
-            }
-            if (isNodeModulesPath(result.path)) {
-              continue;
-            }
+    if (useZoektSearch) {
+      for (const groupInfo of rootGroups) {
+        if (zoektFailed) {
+          break;
+        }
+        for (const searchQuery of searchQueries) {
+          if (zoektFailed) {
+            break;
+          }
+          const searchPath = `/groups/${groupInfo.id}/search?scope=blobs&search=${encodeURIComponent(
+            searchQuery.query,
+          )}&search_type=${encodeURIComponent(blobSearchType)}`;
+          try {
+            const results = await fetchAllPages<GitLabSearchBlobResponse>(
+              config,
+              throttler,
+              rateLimiter,
+              searchPath,
+              buildPageLogOptions(
+                `search ${searchQuery.label} ${groupInfo.full_path}`,
+              ),
+            );
+            for (const result of results) {
+              if (!result.path) {
+                continue;
+              }
+              if (isNodeModulesPath(result.path)) {
+                continue;
+              }
             if (
               "acceptPath" in searchQuery &&
               searchQuery.acceptPath &&
@@ -987,25 +1080,56 @@ const runSync = async () => {
             }
             if (typeof result.project_id === "number") {
               searchProjectIds.add(result.project_id);
+              if (searchQuery.label === "lockfile") {
+                addSearchPath(
+                  searchLockfilePathsByProject,
+                  result.project_id,
+                  result.path,
+                );
+              } else if (searchQuery.label === "root package.json") {
+                addSearchPath(
+                  searchPackageJsonPathsByProject,
+                  result.project_id,
+                  result.path,
+                );
+              }
             }
           }
-        } catch (error) {
-          groupHadError = true;
-          logWarn(
-            `[sync] search failed for group ${groupInfo.full_path} (${searchQuery.label})`,
-            error,
-          );
+          } catch (error) {
+            zoektFailed = true;
+            logWarn(
+              `[sync] zoekt search failed for group ${groupInfo.full_path} (${searchQuery.label})`,
+              error,
+            );
+          }
         }
       }
-      if (groupHadError) {
-        fallbackGroups.add(groupInfo.id);
-      }
+    }
+
+    if (zoektFailed) {
+      useZoektSearch = false;
+      logWarn(
+        "[sync] falling back to full group discovery and basic tree scanning.",
+      );
+      groupContext = await loadGroupContext(false);
+      rootGroups = groupContext.rootGroups;
+      searchProjectIds.clear();
+      searchLockfilePathsByProject.clear();
+      searchPackageJsonPathsByProject.clear();
+      fallbackGroups.clear();
     }
 
     if (searchProjectIds.size === 0 && rootGroups.length > 0) {
       logWarn(
-        "[sync] search returned no projects; falling back to group project listing (advanced search may be unavailable)",
+        "[sync] search returned no projects; falling back to group project listing (zoekt search may be unavailable)",
       );
+      if (useZoektSearch) {
+        useZoektSearch = false;
+        groupContext = await loadGroupContext(false);
+        rootGroups = groupContext.rootGroups;
+        searchLockfilePathsByProject.clear();
+        searchPackageJsonPathsByProject.clear();
+      }
       for (const groupInfo of rootGroups) {
         fallbackGroups.add(groupInfo.id);
       }
@@ -1040,6 +1164,9 @@ const runSync = async () => {
         `[sync] group "${groupInfo.full_path}" (${groupInfo.id}) - ${groupProjects.length} projects`,
       );
       for (const projectInfo of groupProjects) {
+        if (!shouldIncludeProject(projectInfo)) {
+          continue;
+        }
         if (projectById.has(projectInfo.id)) {
           continue;
         }
@@ -1069,6 +1196,9 @@ const runSync = async () => {
           rateLimiter,
           `/projects/${projectId}`,
         );
+        if (!shouldIncludeProject(projectInfo)) {
+          continue;
+        }
         projectById.set(projectInfo.id, projectInfo);
       } catch (error) {
         hadErrors = true;
@@ -1126,69 +1256,70 @@ const runSync = async () => {
             usageSearchFailures.add(query.queryKey);
             continue;
           }
-          for (const extension of query.extensions) {
+          const extensionSet = new Set(
+            query.extensions.map((ext) => ext.toLowerCase()),
+          );
+          const searchQuery = buildUsageSearchQuery(
+            searchText,
+            Array.from(extensionSet),
+          );
+          for (const groupInfo of rootGroups) {
             if (usageSearchDisabled || queryHadError) {
               break;
             }
-            const ext = extension.toLowerCase();
-            const searchQuery = buildUsageSearchQuery(searchText, ext);
-            for (const groupInfo of rootGroups) {
-              if (usageSearchDisabled || queryHadError) {
+            const searchPath = `/groups/${groupInfo.id}/search?scope=blobs&search=${encodeURIComponent(
+              searchQuery,
+            )}&search_type=${encodeURIComponent(blobSearchType)}`;
+            try {
+              const results = await fetchAllPages<GitLabSearchBlobResponse>(
+                config,
+                throttler,
+                rateLimiter,
+                searchPath,
+                buildPageLogOptions(
+                  `usage ${query.queryKey} ${groupInfo.full_path}`,
+                ),
+              );
+              for (const result of results) {
+                if (!result.path) {
+                  continue;
+                }
+                if (isNodeModulesPath(result.path)) {
+                  continue;
+                }
+                const ext = getExtension(result.path);
+                if (!extensionSet.has(ext)) {
+                  continue;
+                }
+                if (typeof result.project_id !== "number") {
+                  continue;
+                }
+                const projectId = result.project_id;
+                let queryMap = usageSearchCandidates.get(query.queryKey);
+                if (!queryMap) {
+                  queryMap = new Map<number, Set<string>>();
+                  usageSearchCandidates.set(query.queryKey, queryMap);
+                }
+                let fileSet = queryMap.get(projectId);
+                if (!fileSet) {
+                  fileSet = new Set<string>();
+                  queryMap.set(projectId, fileSet);
+                }
+                fileSet.add(result.path);
+              }
+            } catch (error) {
+              if (isBlobSearchUnsupported(error)) {
+                usageSearchDisabled = true;
+                logWarn(
+                  "[sync] usage search disabled (blob search not available); falling back to tree scans.",
+                );
                 break;
               }
-              const searchPath = `/groups/${groupInfo.id}/search?scope=blobs&search=${encodeURIComponent(
-                searchQuery,
-              )}&search_type=${encodeURIComponent(blobSearchType)}`;
-              try {
-                const results = await fetchAllPages<GitLabSearchBlobResponse>(
-                  config,
-                  throttler,
-                  rateLimiter,
-                  searchPath,
-                  buildPageLogOptions(
-                    `usage ${query.queryKey} ${ext} ${groupInfo.full_path}`,
-                  ),
-                );
-                for (const result of results) {
-                  if (!result.path) {
-                    continue;
-                  }
-                  if (isNodeModulesPath(result.path)) {
-                    continue;
-                  }
-                  if (getExtension(result.path) !== ext) {
-                    continue;
-                  }
-                  if (typeof result.project_id !== "number") {
-                    continue;
-                  }
-                  const projectId = result.project_id;
-                  let queryMap = usageSearchCandidates.get(query.queryKey);
-                  if (!queryMap) {
-                    queryMap = new Map<number, Set<string>>();
-                    usageSearchCandidates.set(query.queryKey, queryMap);
-                  }
-                  let fileSet = queryMap.get(projectId);
-                  if (!fileSet) {
-                    fileSet = new Set<string>();
-                    queryMap.set(projectId, fileSet);
-                  }
-                  fileSet.add(result.path);
-                }
-              } catch (error) {
-                if (isBlobSearchUnsupported(error)) {
-                  usageSearchDisabled = true;
-                  logWarn(
-                    "[sync] usage search disabled (blob search not available); falling back to tree scans.",
-                  );
-                  break;
-                }
-                queryHadError = true;
-                logWarn(
-                  `[sync] usage search failed for ${query.queryKey} (${groupInfo.full_path})`,
-                  error,
-                );
-              }
+              queryHadError = true;
+              logWarn(
+                `[sync] usage search failed for ${query.queryKey} (${groupInfo.full_path})`,
+                error,
+              );
             }
           }
           if (queryHadError) {
@@ -1218,16 +1349,8 @@ const runSync = async () => {
         const fallbackGroupId = projectFallbackGroup.get(projectInfo.id) ?? null;
         const namespace = projectInfo.namespace ?? null;
         let projectGroupId = fallbackGroupId;
-        if (namespace && namespace.kind !== "user") {
-          const groupInfo = namespaceToGroupInfo(namespace);
-          const parentGroupId = groupInfo.parent_id
-            ? groupMap.get(groupInfo.parent_id) ?? null
-            : null;
-          projectGroupId = await ensureGroup(
-            groupInfo,
-            groupMap,
-            parentGroupId,
-          );
+        if (!projectGroupId && namespace && namespace.kind !== "user") {
+          projectGroupId = await ensureGroupChain(namespace.id);
         }
         if (!projectGroupId) {
           logWarn(`[sync] skipping ${projectLabel}: missing group mapping`);
@@ -1297,44 +1420,56 @@ const runSync = async () => {
           continue;
         }
 
-        const treeStart = Date.now();
-        debug(`[sync] ${projectLabel} fetching repository tree`);
-        const treeEntries = await fetchRepositoryTree(
-          config,
-          throttler,
-          rateLimiter,
-          projectInfo.id,
-          projectInfo.default_branch,
-        );
-        debug(
-          `[sync] ${projectLabel} repository tree fetched (${treeEntries.length} entries, ${((Date.now() - treeStart) / 1000).toFixed(1)}s)`,
-        );
+        let treeEntries: GitLabTreeEntry[] = [];
+        let packageJsonPaths: string[] = [];
+        let lockfilePaths = new Set<string>();
 
-        const packageJsonPaths = treeEntries
-          .filter(
-            (entry) =>
-              entry.type === "blob" &&
-              entry.path.endsWith("package.json") &&
-              !isNodeModulesPath(entry.path),
-          )
-          .map((entry) => entry.path);
-        debug(
-          `[sync] ${projectLabel} package.json files: ${packageJsonPaths.length}`,
-        );
+        if (useZoektSearch) {
+          packageJsonPaths = Array.from(
+            searchPackageJsonPathsByProject.get(projectInfo.id) ?? [],
+          );
+          lockfilePaths = new Set(
+            searchLockfilePathsByProject.get(projectInfo.id) ?? [],
+          );
+        } else {
+          const treeStart = Date.now();
+          debug(`[sync] ${projectLabel} fetching repository tree`);
+          treeEntries = await fetchRepositoryTree(
+            config,
+            throttler,
+            rateLimiter,
+            projectInfo.id,
+            projectInfo.default_branch,
+          );
+          debug(
+            `[sync] ${projectLabel} repository tree fetched (${treeEntries.length} entries, ${((Date.now() - treeStart) / 1000).toFixed(1)}s)`,
+          );
 
-        const lockfilePaths = new Set(
-          treeEntries
+          packageJsonPaths = treeEntries
             .filter(
               (entry) =>
                 entry.type === "blob" &&
-                lockfileNames.some((name) => entry.path.endsWith(name)) &&
+                entry.path.endsWith("package.json") &&
                 !isNodeModulesPath(entry.path),
             )
-            .map((entry) => entry.path),
-        );
+            .map((entry) => entry.path);
+
+          lockfilePaths = new Set(
+            treeEntries
+              .filter(
+                (entry) =>
+                  entry.type === "blob" &&
+                  lockfileNames.some((name) => entry.path.endsWith(name)) &&
+                  !isNodeModulesPath(entry.path),
+              )
+              .map((entry) => entry.path),
+          );
+        }
+
         debug(
-          `[sync] ${projectLabel} lockfiles: ${lockfilePaths.size}`,
+          `[sync] ${projectLabel} package.json files: ${packageJsonPaths.length}`,
         );
+        debug(`[sync] ${projectLabel} lockfiles: ${lockfilePaths.size}`);
 
         const lockfileCache = new Map<string, ParsedLockfile>();
         const lockfileCommitCache = new Map<string, Date | null>();
@@ -1536,6 +1671,21 @@ const runSync = async () => {
               usageSearchCandidates.get(query.queryKey)?.get(projectInfo.id) ??
               new Set<string>();
             queryCandidates.set(query.queryKey, candidates);
+          }
+
+          if (needsTreeFallback && treeEntries.length === 0) {
+            const treeStart = Date.now();
+            debug(`[sync] ${projectLabel} fetching repository tree`);
+            treeEntries = await fetchRepositoryTree(
+              config,
+              throttler,
+              rateLimiter,
+              projectInfo.id,
+              projectInfo.default_branch,
+            );
+            debug(
+              `[sync] ${projectLabel} repository tree fetched (${treeEntries.length} entries, ${((Date.now() - treeStart) / 1000).toFixed(1)}s)`,
+            );
           }
 
           const candidateSet = new Set<string>();

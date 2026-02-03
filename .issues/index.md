@@ -13,6 +13,7 @@ Generated: 2026-02-03
 | [LM-15](./LM-15/issue.md) | Fix Vite build failing on bun:sqlite bundling | medium | |
 | [LM-16](./LM-16/issue.md) | Fix preview DB path when running Nitro output | low | |
 | [LM-17](./LM-17/issue.md) | Copy SQLite DB into .output for deployable builds | low | |
+| [LM-32](./LM-32/issue.md) | Optimize sync using zoekt search when available | high | |
 
 ### Ready
 
@@ -25,6 +26,7 @@ Generated: 2026-02-03
 | --- | --- | --- | --- | --- |
 | [LM-9](./LM-9/issue.md) | Add archive-based usage scanning to reduce API calls | high | low | |
 | [LM-10](./LM-10/issue.md) | Add database purge/reset for fresh sync | medium | medium | |
+| [LM-31](./LM-31/issue.md) | Archive-based fallback for basic GitLab search | medium | low | |
 
 ### Review
 

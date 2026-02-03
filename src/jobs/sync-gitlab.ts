@@ -1243,6 +1243,7 @@ const runSync = async () => {
       string,
       Map<number, Map<string, number>>
     >();
+    const usageSearchTargetsByProject = new Map<number, Set<string>>();
     const usageSearchFailures = new Set<string>();
     let usageSearchDisabled = false;
     const usageSearchableQueries = usageQueries
@@ -1319,6 +1320,11 @@ const runSync = async () => {
                   continue;
                 }
                 const projectId = result.project_id;
+                const targetSet =
+                  usageSearchTargetsByProject.get(projectId) ??
+                  new Set<string>();
+                targetSet.add(query.targetKey);
+                usageSearchTargetsByProject.set(projectId, targetSet);
                 let queryMap = usageSearchMatches.get(query.queryKey);
                 if (!queryMap) {
                   queryMap = new Map<number, Map<string, number>>();
@@ -1665,6 +1671,16 @@ const runSync = async () => {
             })
             .map((target) => target.targetKey),
         );
+        if (useZoektSearch) {
+          const matchedTargets = usageSearchTargetsByProject.get(
+            projectInfo.id,
+          );
+          if (matchedTargets) {
+            for (const targetKey of matchedTargets) {
+              enabledTargets.add(targetKey);
+            }
+          }
+        }
         const queryList = usageQueries.filter((query) =>
           enabledTargets.has(query.targetKey),
         );

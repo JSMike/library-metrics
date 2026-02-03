@@ -112,9 +112,10 @@ function SubTargetDetailPage() {
                     >
                       {query.queryKeyTitle}
                     </Link>
-                  </h2>
+                </h2>
                   <span className="queries-meta">
-                    {query.matchCount} matches / {query.projectCount} projects
+                    {query.matchCount} matches / {query.projectCount} projects /{' '}
+                    {query.fileCount} files
                   </span>
                 </div>
                 {query.projects.length === 0 ? (
@@ -126,6 +127,7 @@ function SubTargetDetailPage() {
                         <tr>
                           <th>Project</th>
                           <th>Matches</th>
+                          <th>Files</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -142,6 +144,7 @@ function SubTargetDetailPage() {
                               </Link>
                             </td>
                             <td>{project.matchCount}</td>
+                            <td>{project.fileCount}</td>
                           </tr>
                         ))}
                       </tbody>

@@ -37,6 +37,12 @@ type GitLabTreeEntry = {
   type: "blob" | "tree";
 };
 
+type GitLabSearchBlobResponse = {
+  project_id?: number;
+  path?: string;
+  filename?: string;
+};
+
 type GitLabFileResponse = {
   file_path: string;
   encoding: string;
@@ -76,6 +82,22 @@ const lockfileNames = [
   "bun.lockb",
 ] as const;
 
+const lockfileSearchQueries = [
+  "path:package-lock.json -path:node_modules",
+  "path:npm-shrinkwrap.json -path:node_modules",
+  "path:yarn.lock -path:node_modules",
+  "path:pnpm-lock.yaml -path:node_modules",
+  "path:bun.lock -path:node_modules",
+  "path:bun.lockb -path:node_modules",
+  "path:deno.lock -path:node_modules",
+];
+const rootPackageJsonSearchQuery = "path:package.json -path:node_modules";
+const usageSearchExcludePath = "-path:node_modules";
+const blobSearchType = "advanced";
+
+const buildUsageSearchQuery = (searchText: string, extension: string) =>
+  `${searchText} extension:${extension} ${usageSearchExcludePath}`.trim();
+
 const lockfileKindMap: Record<string, (typeof fileKinds)[number]> = {
   "package-lock.json": "package_lock",
   "pnpm-lock.yaml": "pnpm_lock",
@@ -102,6 +124,29 @@ const getDirname = (path: string) => {
   }
   parts.pop();
   return parts.join("/");
+};
+
+const isNodeModulesPath = (path: string) =>
+  path.split("/").includes("node_modules");
+
+const isRootPath = (path: string) => !path.includes("/");
+
+const isBlobSearchUnsupported = (error: unknown) => {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+  const status = (error as { status?: number }).status;
+  if (status !== 400) {
+    return false;
+  }
+  const body = (error as { body?: string }).body;
+  if (typeof body !== "string") {
+    return false;
+  }
+  return (
+    body.includes("Scope supported only with advanced search") ||
+    body.includes("exact code search")
+  );
 };
 
 const resolveLockfileCandidates = (
@@ -425,7 +470,7 @@ const getExtension = (path: string) => {
   if (idx === -1) {
     return "";
   }
-  return lower.slice(idx);
+  return lower.slice(idx + 1);
 };
 
 const normalizeGroupPath = (path: string) =>
@@ -892,11 +937,90 @@ const runSync = async () => {
       );
     }
 
+    const searchQueries = [
+      ...lockfileSearchQueries.map((query) => ({
+        label: "lockfile",
+        query,
+      })),
+      {
+        label: "root package.json",
+        query: rootPackageJsonSearchQuery,
+        acceptPath: (path: string) => path === "package.json" && isRootPath(path),
+      },
+    ] as const;
+
     const projectMap = await buildProjectMap();
     const projectById = new Map<number, GitLabProjectResponse>();
     const projectFallbackGroup = new Map<number, number>();
+    const searchProjectIds = new Set<number>();
+    const fallbackGroups = new Set<number>();
 
     for (const groupInfo of rootGroups) {
+      let groupHadError = false;
+      for (const searchQuery of searchQueries) {
+        const searchPath = `/groups/${groupInfo.id}/search?scope=blobs&search=${encodeURIComponent(
+          searchQuery.query,
+        )}&search_type=${encodeURIComponent(blobSearchType)}`;
+        try {
+          const results = await fetchAllPages<GitLabSearchBlobResponse>(
+            config,
+            throttler,
+            rateLimiter,
+            searchPath,
+            buildPageLogOptions(
+              `search ${searchQuery.label} ${groupInfo.full_path}`,
+            ),
+          );
+          for (const result of results) {
+            if (!result.path) {
+              continue;
+            }
+            if (isNodeModulesPath(result.path)) {
+              continue;
+            }
+            if (
+              "acceptPath" in searchQuery &&
+              searchQuery.acceptPath &&
+              !searchQuery.acceptPath(result.path)
+            ) {
+              continue;
+            }
+            if (typeof result.project_id === "number") {
+              searchProjectIds.add(result.project_id);
+            }
+          }
+        } catch (error) {
+          groupHadError = true;
+          logWarn(
+            `[sync] search failed for group ${groupInfo.full_path} (${searchQuery.label})`,
+            error,
+          );
+        }
+      }
+      if (groupHadError) {
+        fallbackGroups.add(groupInfo.id);
+      }
+    }
+
+    if (searchProjectIds.size === 0 && rootGroups.length > 0) {
+      logWarn(
+        "[sync] search returned no projects; falling back to group project listing (advanced search may be unavailable)",
+      );
+      for (const groupInfo of rootGroups) {
+        fallbackGroups.add(groupInfo.id);
+      }
+    }
+
+    if (fallbackGroups.size > 0) {
+      logWarn(
+        `[sync] falling back to group project listing for ${fallbackGroups.size} groups`,
+      );
+    }
+
+    for (const groupInfo of rootGroups) {
+      if (!fallbackGroups.has(groupInfo.id)) {
+        continue;
+      }
       const parentGroupId = groupInfo.parent_id
         ? groupMap.get(groupInfo.parent_id) ?? null
         : null;
@@ -924,11 +1048,162 @@ const runSync = async () => {
       }
     }
 
+    if (searchProjectIds.size === 0 && fallbackGroups.size === 0) {
+      logWarn("[sync] search returned no projects for the current scope");
+    }
+
+    const searchProjectList = Array.from(searchProjectIds);
+    for (const [index, projectId] of searchProjectList.entries()) {
+      if (projectById.has(projectId)) {
+        continue;
+      }
+      if (debugEnabled && (index + 1) % scanLogInterval === 0) {
+        debug(
+          `[sync] fetched ${index + 1}/${searchProjectList.length} project records`,
+        );
+      }
+      try {
+        const { data: projectInfo } = await fetchJson<GitLabProjectResponse>(
+          config,
+          throttler,
+          rateLimiter,
+          `/projects/${projectId}`,
+        );
+        projectById.set(projectInfo.id, projectInfo);
+      } catch (error) {
+        hadErrors = true;
+        logWarn(`[sync] failed to load project ${projectId}`, error);
+      }
+    }
+
+    const searchFallbackTriggered =
+      searchProjectIds.size === 0 && rootGroups.length > 0;
+
     const projects = Array.from(projectById.values()).sort((left, right) =>
       left.path_with_namespace.localeCompare(right.path_with_namespace),
     );
     const totalProjects = projects.length;
     logInfo(`[sync] total projects in scope: ${totalProjects}`);
+
+    const usageSearchCandidates = new Map<
+      string,
+      Map<number, Set<string>>
+    >();
+    const usageSearchFailures = new Set<string>();
+    let usageSearchDisabled = false;
+    const usageSearchableQueries = usageQueries
+      .map((query) => ({
+        ...query,
+        searchText: query.searchText?.trim() ?? "",
+      }))
+      .filter((query) => query.searchText.length > 0);
+
+    for (const query of usageQueries) {
+      if (!query.searchText || query.searchText.trim().length === 0) {
+        usageSearchFailures.add(query.queryKey);
+      }
+    }
+
+    if (usageSearchableQueries.length > 0) {
+      if (searchFallbackTriggered) {
+        usageSearchDisabled = true;
+        logWarn(
+          "[sync] usage search disabled (search returned no projects); falling back to tree scans.",
+        );
+      }
+      if (rootGroups.length === 0) {
+        for (const query of usageSearchableQueries) {
+          usageSearchFailures.add(query.queryKey);
+        }
+      } else {
+        for (const query of usageSearchableQueries) {
+          if (usageSearchDisabled) {
+            break;
+          }
+          let queryHadError = false;
+          const searchText = query.searchText?.trim();
+          if (!searchText) {
+            usageSearchFailures.add(query.queryKey);
+            continue;
+          }
+          for (const extension of query.extensions) {
+            if (usageSearchDisabled || queryHadError) {
+              break;
+            }
+            const ext = extension.toLowerCase();
+            const searchQuery = buildUsageSearchQuery(searchText, ext);
+            for (const groupInfo of rootGroups) {
+              if (usageSearchDisabled || queryHadError) {
+                break;
+              }
+              const searchPath = `/groups/${groupInfo.id}/search?scope=blobs&search=${encodeURIComponent(
+                searchQuery,
+              )}&search_type=${encodeURIComponent(blobSearchType)}`;
+              try {
+                const results = await fetchAllPages<GitLabSearchBlobResponse>(
+                  config,
+                  throttler,
+                  rateLimiter,
+                  searchPath,
+                  buildPageLogOptions(
+                    `usage ${query.queryKey} ${ext} ${groupInfo.full_path}`,
+                  ),
+                );
+                for (const result of results) {
+                  if (!result.path) {
+                    continue;
+                  }
+                  if (isNodeModulesPath(result.path)) {
+                    continue;
+                  }
+                  if (getExtension(result.path) !== ext) {
+                    continue;
+                  }
+                  if (typeof result.project_id !== "number") {
+                    continue;
+                  }
+                  const projectId = result.project_id;
+                  let queryMap = usageSearchCandidates.get(query.queryKey);
+                  if (!queryMap) {
+                    queryMap = new Map<number, Set<string>>();
+                    usageSearchCandidates.set(query.queryKey, queryMap);
+                  }
+                  let fileSet = queryMap.get(projectId);
+                  if (!fileSet) {
+                    fileSet = new Set<string>();
+                    queryMap.set(projectId, fileSet);
+                  }
+                  fileSet.add(result.path);
+                }
+              } catch (error) {
+                if (isBlobSearchUnsupported(error)) {
+                  usageSearchDisabled = true;
+                  logWarn(
+                    "[sync] usage search disabled (blob search not available); falling back to tree scans.",
+                  );
+                  break;
+                }
+                queryHadError = true;
+                logWarn(
+                  `[sync] usage search failed for ${query.queryKey} (${groupInfo.full_path})`,
+                  error,
+                );
+              }
+            }
+          }
+          if (queryHadError) {
+            usageSearchFailures.add(query.queryKey);
+          }
+        }
+      }
+    }
+
+    if (usageSearchDisabled) {
+      usageSearchCandidates.clear();
+      for (const query of usageSearchableQueries) {
+        usageSearchFailures.add(query.queryKey);
+      }
+    }
 
     let completedProjects = 0;
 
@@ -1038,7 +1313,9 @@ const runSync = async () => {
         const packageJsonPaths = treeEntries
           .filter(
             (entry) =>
-              entry.type === "blob" && entry.path.endsWith("package.json"),
+              entry.type === "blob" &&
+              entry.path.endsWith("package.json") &&
+              !isNodeModulesPath(entry.path),
           )
           .map((entry) => entry.path);
         debug(
@@ -1050,7 +1327,8 @@ const runSync = async () => {
             .filter(
               (entry) =>
                 entry.type === "blob" &&
-                lockfileNames.some((name) => entry.path.endsWith(name)),
+                lockfileNames.some((name) => entry.path.endsWith(name)) &&
+                !isNodeModulesPath(entry.path),
             )
             .map((entry) => entry.path),
         );
@@ -1246,10 +1524,46 @@ const runSync = async () => {
         }
 
         if (queriesByExtension.size > 0) {
-          const candidateFiles = treeEntries
-            .filter((entry) => entry.type === "blob")
-            .map((entry) => entry.path)
-            .filter((path) => queriesByExtension.has(getExtension(path)));
+          const queryCandidates = new Map<string, Set<string> | null>();
+          let needsTreeFallback = false;
+          for (const query of queryList) {
+            if (usageSearchFailures.has(query.queryKey)) {
+              queryCandidates.set(query.queryKey, null);
+              needsTreeFallback = true;
+              continue;
+            }
+            const candidates =
+              usageSearchCandidates.get(query.queryKey)?.get(projectInfo.id) ??
+              new Set<string>();
+            queryCandidates.set(query.queryKey, candidates);
+          }
+
+          const candidateSet = new Set<string>();
+          for (const candidates of queryCandidates.values()) {
+            if (!candidates) {
+              continue;
+            }
+            for (const filePath of candidates) {
+              candidateSet.add(filePath);
+            }
+          }
+
+          if (needsTreeFallback) {
+            for (const entry of treeEntries) {
+              if (entry.type !== "blob") {
+                continue;
+              }
+              if (isNodeModulesPath(entry.path)) {
+                continue;
+              }
+              if (!queriesByExtension.has(getExtension(entry.path))) {
+                continue;
+              }
+              candidateSet.add(entry.path);
+            }
+          }
+
+          const candidateFiles = Array.from(candidateSet);
           debug(
             `[sync] ${projectLabel} usage scan candidates: ${candidateFiles.length}`,
           );
@@ -1281,6 +1595,13 @@ const runSync = async () => {
             }
 
             for (const query of queries) {
+              const candidates = queryCandidates.get(query.queryKey);
+              if (candidates && !candidates.has(filePath)) {
+                continue;
+              }
+              if (candidates === undefined) {
+                continue;
+              }
               const regex = queryMatchers.get(query.queryKey);
               if (!regex) {
                 continue;

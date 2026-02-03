@@ -30,6 +30,8 @@ Generated: 2026-02-03
 
 | ID | Title | Complexity | PR |
 | --- | --- | --- | --- |
+| [LM-29](./LM-29/issue.md) | Seed GitLab sync via file search to avoid node_modules noise | medium | |
+| [LM-30](./LM-30/issue.md) | Search-seeded usage queries with project/file/total counts | medium | |
 
 ### Done
 

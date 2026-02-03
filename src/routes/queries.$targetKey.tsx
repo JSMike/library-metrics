@@ -107,6 +107,7 @@ function TargetDetailPage() {
                           <th>Query</th>
                           <th>Matches</th>
                           <th>Projects</th>
+                          <th>Files</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -128,6 +129,7 @@ function TargetDetailPage() {
                               </td>
                               <td>{query.matchCount}</td>
                               <td>{query.projectCount}</td>
+                              <td>{query.fileCount}</td>
                             </tr>
                           )
                         })}

@@ -244,7 +244,9 @@ const getSourceTargetKeysForProject = (projectPath: string) => {
 };
 
 const buildSourceProjectExclusion = (
-  targetColumn: typeof usageResult.targetKey,
+  targetColumn:
+    | typeof usageResult.targetKey
+    | typeof usageFileResult.targetKey,
   projectPathColumn: typeof project.pathWithNamespace,
 ) => {
   const clauses: Array<ReturnType<typeof and>> = [];
@@ -323,6 +325,12 @@ const buildQueryKey = (
   subTargetKey: string,
   queryKey: string,
 ) => `${targetKey}/${subTargetKey}/${queryKey}`;
+
+const buildUsageKey = (
+  targetKey: string,
+  subTargetKey: string | null,
+  queryKey: string,
+) => `${targetKey}::${subTargetKey ?? ""}::${queryKey}`;
 
 export const fetchLatestSyncRun = async () => {
   const rows = await db
@@ -905,6 +913,10 @@ export const fetchUsageSummary = async () => {
     usageResult.targetKey,
     project.pathWithNamespace,
   );
+  const fileSourceExclusion = buildSourceProjectExclusion(
+    usageFileResult.targetKey,
+    project.pathWithNamespace,
+  );
   let query = db
     .select({
       targetKey: usageResult.targetKey,
@@ -923,9 +935,29 @@ export const fetchUsageSummary = async () => {
         usageResult.syncId,
       ),
     );
+  let fileQuery = db
+    .select({
+      targetKey: usageFileResult.targetKey,
+      subTargetKey: usageFileResult.subTargetKey,
+      queryKey: usageFileResult.queryKey,
+      fileCount: sql<number>`count(distinct ${usageFileResult.projectId} || '::' || ${usageFileResult.filePath})`,
+    })
+    .from(usageFileResult)
+    .leftJoin(project, eq(usageFileResult.projectId, project.id))
+    .innerJoin(
+      projectSnapshot,
+      buildProjectDataJoin(
+        runId,
+        usageFileResult.projectId,
+        usageFileResult.syncId,
+      ),
+    );
 
   if (sourceExclusion) {
     query = query.where(sourceExclusion);
+  }
+  if (fileSourceExclusion) {
+    fileQuery = fileQuery.where(fileSourceExclusion);
   }
 
   const rows = await query
@@ -936,7 +968,26 @@ export const fetchUsageSummary = async () => {
     )
     .orderBy(desc(sql`sum(${usageResult.matchCount})`));
 
-  return rows;
+  const fileRows = await fileQuery.groupBy(
+    usageFileResult.targetKey,
+    usageFileResult.subTargetKey,
+    usageFileResult.queryKey,
+  );
+  const fileCountMap = new Map<string, number>();
+  for (const row of fileRows) {
+    fileCountMap.set(
+      buildUsageKey(row.targetKey, row.subTargetKey, row.queryKey),
+      row.fileCount,
+    );
+  }
+
+  return rows.map((row) => ({
+    ...row,
+    fileCount:
+      fileCountMap.get(
+        buildUsageKey(row.targetKey, row.subTargetKey, row.queryKey),
+      ) ?? 0,
+  }));
 };
 
 export const fetchUsageTargets = async () => {
@@ -947,6 +998,10 @@ export const fetchUsageTargets = async () => {
 
   const sourceExclusion = buildSourceProjectExclusion(
     usageResult.targetKey,
+    project.pathWithNamespace,
+  );
+  const fileSourceExclusion = buildSourceProjectExclusion(
+    usageFileResult.targetKey,
     project.pathWithNamespace,
   );
   let query = db
@@ -965,20 +1020,45 @@ export const fetchUsageTargets = async () => {
         usageResult.syncId,
       ),
     );
+  let fileQuery = db
+    .select({
+      targetKey: usageFileResult.targetKey,
+      fileCount: sql<number>`count(distinct ${usageFileResult.projectId} || '::' || ${usageFileResult.filePath})`,
+    })
+    .from(usageFileResult)
+    .leftJoin(project, eq(usageFileResult.projectId, project.id))
+    .innerJoin(
+      projectSnapshot,
+      buildProjectDataJoin(
+        runId,
+        usageFileResult.projectId,
+        usageFileResult.syncId,
+      ),
+    );
 
   if (sourceExclusion) {
     query = query.where(sourceExclusion);
+  }
+  if (fileSourceExclusion) {
+    fileQuery = fileQuery.where(fileSourceExclusion);
   }
 
   const rows = await query
     .groupBy(usageResult.targetKey)
     .orderBy(desc(sql`sum(${usageResult.matchCount})`));
 
+  const fileRows = await fileQuery.groupBy(usageFileResult.targetKey);
+  const fileCountMap = new Map<string, number>();
+  for (const row of fileRows) {
+    fileCountMap.set(row.targetKey, row.fileCount);
+  }
+
   return rows.map((row) => ({
     targetKey: row.targetKey,
     targetTitle: getTargetTitle(row.targetKey),
     matchCount: row.matchCount,
     projectCount: row.projectCount,
+    fileCount: fileCountMap.get(row.targetKey) ?? 0,
   }));
 };
 
@@ -999,6 +1079,12 @@ export const fetchUsageTargetDetail = async (targetKey: string) => {
         exclusion,
       )
     : eq(usageResult.targetKey, targetKey);
+  const fileExclusion = exclusion
+    ? and(
+        eq(usageFileResult.targetKey, targetKey),
+        exclusion,
+      )
+    : eq(usageFileResult.targetKey, targetKey);
 
   const rows = await db
     .select({
@@ -1021,6 +1107,33 @@ export const fetchUsageTargetDetail = async (targetKey: string) => {
     .groupBy(usageResult.subTargetKey, usageResult.queryKey)
     .orderBy(asc(usageResult.subTargetKey), asc(usageResult.queryKey));
 
+  const fileRows = await db
+    .select({
+      subTargetKey: usageFileResult.subTargetKey,
+      queryKey: usageFileResult.queryKey,
+      fileCount: sql<number>`count(distinct ${usageFileResult.projectId} || '::' || ${usageFileResult.filePath})`,
+    })
+    .from(usageFileResult)
+    .leftJoin(project, eq(usageFileResult.projectId, project.id))
+    .innerJoin(
+      projectSnapshot,
+      buildProjectDataJoin(
+        runId,
+        usageFileResult.projectId,
+        usageFileResult.syncId,
+      ),
+    )
+    .where(fileExclusion)
+    .groupBy(usageFileResult.subTargetKey, usageFileResult.queryKey);
+  const fileCountMap = new Map<string, number>();
+  for (const row of fileRows) {
+    const normalizedSubTargetKey = row.subTargetKey ?? "unknown";
+    fileCountMap.set(
+      buildUsageKey(targetKey, normalizedSubTargetKey, row.queryKey),
+      row.fileCount,
+    );
+  }
+
   const subTargetMap = new Map<
     string,
     {
@@ -1031,6 +1144,7 @@ export const fetchUsageTargetDetail = async (targetKey: string) => {
         queryKeyTitle: string;
         matchCount: number;
         projectCount: number;
+        fileCount: number;
       }>;
     }
   >();
@@ -1049,6 +1163,9 @@ export const fetchUsageTargetDetail = async (targetKey: string) => {
       queryKeyTitle: getQueryTitle(targetKey, subTargetKey, row.queryKey),
       matchCount: row.matchCount,
       projectCount: row.projectCount,
+      fileCount:
+        fileCountMap.get(buildUsageKey(targetKey, subTargetKey, row.queryKey)) ??
+        0,
     });
     if (!subTargetMap.has(subTargetKey)) {
       subTargetMap.set(subTargetKey, entry);
@@ -1087,6 +1204,16 @@ export const fetchUsageSubTargetDetail = async (
         eq(usageResult.targetKey, targetKey),
         eq(usageResult.subTargetKey, subTargetKey),
       );
+  const fileWhereClause = exclusion
+    ? and(
+        eq(usageFileResult.targetKey, targetKey),
+        eq(usageFileResult.subTargetKey, subTargetKey),
+        exclusion,
+      )
+    : and(
+        eq(usageFileResult.targetKey, targetKey),
+        eq(usageFileResult.subTargetKey, subTargetKey),
+      );
 
   const rows = await db
     .select({
@@ -1110,6 +1237,39 @@ export const fetchUsageSubTargetDetail = async (
     .groupBy(usageResult.queryKey, project.id, project.name, project.pathWithNamespace)
     .orderBy(asc(usageResult.queryKey), asc(project.name));
 
+  const fileRows = await db
+    .select({
+      queryKey: usageFileResult.queryKey,
+      projectId: project.id,
+      fileCount: sql<number>`count(distinct ${usageFileResult.filePath})`,
+    })
+    .from(usageFileResult)
+    .leftJoin(project, eq(usageFileResult.projectId, project.id))
+    .innerJoin(
+      projectSnapshot,
+      buildProjectDataJoin(
+        runId,
+        usageFileResult.projectId,
+        usageFileResult.syncId,
+      ),
+    )
+    .where(fileWhereClause)
+    .groupBy(usageFileResult.queryKey, project.id);
+
+  const fileCountByQueryProject = new Map<string, number>();
+  const fileCountByQuery = new Map<string, number>();
+  for (const row of fileRows) {
+    if (!row.projectId) {
+      continue;
+    }
+    const key = `${row.queryKey}::${row.projectId}`;
+    fileCountByQueryProject.set(key, row.fileCount);
+    fileCountByQuery.set(
+      row.queryKey,
+      (fileCountByQuery.get(row.queryKey) ?? 0) + row.fileCount,
+    );
+  }
+
   const queryMap = new Map<
     string,
     {
@@ -1117,11 +1277,13 @@ export const fetchUsageSubTargetDetail = async (
       queryKeyTitle: string;
       matchCount: number;
       projectCount: number;
+      fileCount: number;
       projects: Array<{
         projectId: number;
         projectName: string;
         projectPath: string;
         matchCount: number;
+        fileCount: number;
       }>;
     }
   >();
@@ -1134,15 +1296,20 @@ export const fetchUsageSubTargetDetail = async (
         queryKeyTitle: getQueryTitle(targetKey, subTargetKey, row.queryKey),
         matchCount: 0,
         projectCount: 0,
+        fileCount: 0,
         projects: [],
       };
 
     if (row.projectId) {
+      const fileCount =
+        fileCountByQueryProject.get(`${row.queryKey}::${row.projectId}`) ??
+        0;
       entry.projects.push({
         projectId: row.projectId,
         projectName: row.projectName ?? "Unknown",
         projectPath: row.projectPath ?? "",
         matchCount: row.matchCount,
+        fileCount,
       });
       entry.projectCount += 1;
       entry.matchCount += row.matchCount;
@@ -1151,6 +1318,10 @@ export const fetchUsageSubTargetDetail = async (
     if (!queryMap.has(row.queryKey)) {
       queryMap.set(row.queryKey, entry);
     }
+  }
+
+  for (const entry of queryMap.values()) {
+    entry.fileCount = fileCountByQuery.get(entry.queryKey) ?? 0;
   }
 
   return {

@@ -1,6 +1,7 @@
 export type UsageQueryDefinition = {
   queryKey: string;
   queryKeyTitle: string;
+  searchText?: string;
   regex: string;
   extensions: string[];
   flags?: string;
@@ -27,6 +28,7 @@ export type UsageQuery = {
   subTargetTitle: string;
   queryKey: string;
   queryKeyTitle: string;
+  searchText?: string;
   regex: string;
   extensions: string[];
   flags?: string;
@@ -49,22 +51,25 @@ export const usageTargets: UsageTargetDefinition[] = [
           {
             queryKey: "markup-button-box",
             queryKeyTitle: "<button-box>",
+            searchText: "<button-box",
             regex: "<button-box",
-            extensions: [".html", ".jsx", ".tsx", ".mdx"],
+            extensions: ["html", "js", "ts", "jsx", "tsx"],
             flags: "g",
           },
           {
             queryKey: "markup-ButtonBox",
             queryKeyTitle: "<ButtonBox>",
+            searchText: "<ButtonBox",
             regex: "<ButtonBox",
-            extensions: [".html", ".jsx", ".tsx", ".mdx"],
+            extensions: ["jsx", "tsx"],
             flags: "g",
           },
           {
             queryKey: "import-button",
             queryKeyTitle: "import '@box-model/web/button'",
+            searchText: "@box-model/web/button",
             regex: "import\\s+.*from\\s+['\\\"]@box-model\\/web\\/button['\\\"]",
-            extensions: [".js", ".ts", ".jsx", ".tsx", ".mdx"],
+            extensions: ["js", "ts", "jsx", "tsx"],
             flags: "g",
           },
         ],
@@ -86,6 +91,7 @@ export const usageQueries: UsageQuery[] = usageTargets.flatMap((target) =>
         query.queryKey,
       ),
       queryKeyTitle: query.queryKeyTitle,
+      searchText: query.searchText,
       regex: query.regex,
       extensions: query.extensions,
       flags: query.flags,

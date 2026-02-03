@@ -239,16 +239,33 @@ const resolveJsonLockfileVersion = (
   return null;
 };
 
+const normalizePnpmImporterValue = (value: unknown) => {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (value && typeof value === "object") {
+    const maybeVersion = (value as { version?: unknown }).version;
+    if (typeof maybeVersion === "string") {
+      return maybeVersion;
+    }
+    const maybeSpecifier = (value as { specifier?: unknown }).specifier;
+    if (typeof maybeSpecifier === "string") {
+      return maybeSpecifier;
+    }
+  }
+  return null;
+};
+
 const parsePnpmImporterMap = (raw: string) => {
   try {
     const data = parseYaml(raw) as {
       importers?: Record<
         string,
         {
-          dependencies?: Record<string, string>;
-          devDependencies?: Record<string, string>;
-          optionalDependencies?: Record<string, string>;
-          peerDependencies?: Record<string, string>;
+          dependencies?: Record<string, unknown>;
+          devDependencies?: Record<string, unknown>;
+          optionalDependencies?: Record<string, unknown>;
+          peerDependencies?: Record<string, unknown>;
         }
       >;
     };
@@ -263,7 +280,11 @@ const parsePnpmImporterMap = (raw: string) => {
       };
       const depMap = new Map<string, string>();
       for (const [name, version] of Object.entries(deps)) {
-        depMap.set(name, version);
+        const normalized = normalizePnpmImporterValue(version);
+        if (!normalized) {
+          continue;
+        }
+        depMap.set(name, normalized);
       }
       map.set(importerKey, depMap);
     }
@@ -297,7 +318,10 @@ const parseYarnSelectorMap = (raw: string) => {
   return map;
 };
 
-const extractPnpmVersion = (value: string) => {
+const extractPnpmVersion = (value: unknown) => {
+  if (typeof value !== "string") {
+    return null;
+  }
   if (
     value.startsWith("link:") ||
     value.startsWith("workspace:") ||

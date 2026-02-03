@@ -15,6 +15,7 @@ Generated: 2026-02-03
 | [LM-17](./LM-17/issue.md) | Copy SQLite DB into .output for deployable builds | low | |
 | [LM-32](./LM-32/issue.md) | Optimize sync using zoekt search when available | high | |
 | [LM-33](./LM-33/issue.md) | Fix usage target routing to target detail view | medium | |
+| [LM-34](./LM-34/issue.md) | Handle pnpm lockfile dependency objects in sync | low | |
 
 ### Ready
 

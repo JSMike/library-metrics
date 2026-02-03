@@ -784,6 +784,11 @@ const runSync = async () => {
       logInfo(...args);
     }
   };
+  const pageLogInterval = verboseEnabled ? 1 : debugEnabled ? 5 : 0;
+  const buildPageLogOptions = (label: string) =>
+    pageLogInterval > 0
+      ? { label, log: debug, logEveryPages: pageLogInterval }
+      : undefined;
   const forceLabel = forceResync ? " (force)" : "";
   const startDate = new Date(runStartedAt);
   logInfo(
@@ -810,6 +815,7 @@ const runSync = async () => {
       throttler,
       rateLimiter,
       "/groups",
+      buildPageLogOptions("groups"),
     );
     const groupById = new Map<number, GitLabGroupResponse>();
     for (const group of discoveredGroups) {
@@ -904,6 +910,7 @@ const runSync = async () => {
         throttler,
         rateLimiter,
         `/groups/${groupInfo.id}/projects?include_subgroups=true`,
+        buildPageLogOptions(`group ${groupInfo.full_path} projects`),
       );
       logInfo(
         `[sync] group "${groupInfo.full_path}" (${groupInfo.id}) - ${groupProjects.length} projects`,

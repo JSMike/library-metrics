@@ -53,6 +53,12 @@ export function DashboardPage({
   const [libraryFilter, setLibraryFilter] = useState('')
   const [libraryPage, setLibraryPage] = useState(1)
   const [usagePage, setUsagePage] = useState(1)
+  const [librarySortKey, setLibrarySortKey] = useState<
+    'library' | 'usage' | null
+  >(null)
+  const [librarySortDirection, setLibrarySortDirection] = useState<
+    'asc' | 'desc'
+  >('asc')
 
   const filteredLibraries = useMemo(() => {
     const normalized = libraryFilter.trim().toLowerCase()
@@ -64,25 +70,79 @@ export function DashboardPage({
     )
   }, [libraryFilter, librarySummary])
 
+  const sortedLibraries = useMemo(() => {
+    if (!librarySortKey) {
+      return filteredLibraries
+    }
+    const collator = new Intl.Collator(undefined, {
+      numeric: true,
+      sensitivity: 'base',
+    })
+    const sorted = [...filteredLibraries].sort((left, right) => {
+      if (librarySortKey === 'usage') {
+        const usageDiff = (left.usageCount ?? 0) - (right.usageCount ?? 0)
+        if (usageDiff !== 0) {
+          return usageDiff
+        }
+      }
+      const nameDiff = collator.compare(
+        left.dependencyName ?? '',
+        right.dependencyName ?? '',
+      )
+      if (nameDiff !== 0) {
+        return nameDiff
+      }
+      return left.dependencyId - right.dependencyId
+    })
+    return librarySortDirection === 'desc' ? sorted.reverse() : sorted
+  }, [filteredLibraries, librarySortDirection, librarySortKey])
+
   useEffect(() => {
     setLibraryPage(1)
   }, [libraryFilter])
 
   const totalLibraryPages = Math.max(
     1,
-    Math.ceil(filteredLibraries.length / PAGE_SIZE),
+    Math.ceil(sortedLibraries.length / PAGE_SIZE),
   )
   const currentLibraryPage = Math.min(libraryPage, totalLibraryPages)
   const libraryStart = (currentLibraryPage - 1) * PAGE_SIZE
-  const pagedLibraries = filteredLibraries.slice(
+  const pagedLibraries = sortedLibraries.slice(
     libraryStart,
     libraryStart + PAGE_SIZE,
   )
   const libraryRangeStart = libraryStart + 1
   const libraryRangeEnd = Math.min(
-    filteredLibraries.length,
+    sortedLibraries.length,
     libraryStart + pagedLibraries.length,
   )
+  const totalLibraries = sortedLibraries.length
+
+  const toggleLibrarySort = (key: 'library' | 'usage') => {
+    if (librarySortKey === key) {
+      setLibrarySortDirection((direction) =>
+        direction === 'asc' ? 'desc' : 'asc',
+      )
+      setLibraryPage(1)
+      return
+    }
+    setLibrarySortKey(key)
+    setLibrarySortDirection('asc')
+    setLibraryPage(1)
+  }
+
+  const getLibrarySortLabel = (key: 'library' | 'usage') =>
+    librarySortKey === key
+      ? librarySortDirection === 'asc'
+        ? ' ^'
+        : ' v'
+      : ''
+  const getLibraryAriaSort = (key: 'library' | 'usage') =>
+    librarySortKey === key
+      ? librarySortDirection === 'asc'
+        ? 'ascending'
+        : 'descending'
+      : 'none'
   const totalUsagePages = Math.max(
     1,
     Math.ceil(usageTargets.length / PAGE_SIZE),
@@ -165,8 +225,30 @@ export function DashboardPage({
             <table>
               <thead>
                 <tr>
-                  <th>Library</th>
-                  <th>Usage</th>
+                  <th aria-sort={getLibraryAriaSort('library')}>
+                    <button
+                      type="button"
+                      className="table-sort-button"
+                      onClick={() => toggleLibrarySort('library')}
+                    >
+                      Library
+                      <span className="table-sort-indicator">
+                        {getLibrarySortLabel('library')}
+                      </span>
+                    </button>
+                  </th>
+                  <th aria-sort={getLibraryAriaSort('usage')}>
+                    <button
+                      type="button"
+                      className="table-sort-button"
+                      onClick={() => toggleLibrarySort('usage')}
+                    >
+                      Usage
+                      <span className="table-sort-indicator">
+                        {getLibrarySortLabel('usage')}
+                      </span>
+                    </button>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -198,11 +280,11 @@ export function DashboardPage({
             </table>
           </div>
         )}
-        {filteredLibraries.length > PAGE_SIZE ? (
+        {sortedLibraries.length > PAGE_SIZE ? (
           <div className="dashboard-pagination">
             <span className="dashboard-pagination-summary">
               Showing {libraryRangeStart} - {libraryRangeEnd} of{' '}
-              {filteredLibraries.length}
+              {totalLibraries}
             </span>
             <button
               type="button"

@@ -346,17 +346,12 @@ export const fetchLibrarySummary = async () => {
     return [];
   }
 
-  const rows = await db
+  const usageByProject = db
     .select({
-      dependencyId: dependency.id,
-      dependencyName: dependency.name,
-      usageCount: sql<number>`count(distinct ${lockDependencySnapshot.projectId})`,
+      dependencyId: lockDependencySnapshot.dependencyId,
+      projectId: lockDependencySnapshot.projectId,
     })
     .from(lockDependencySnapshot)
-    .leftJoin(
-      dependency,
-      eq(lockDependencySnapshot.dependencyId, dependency.id),
-    )
     .innerJoin(
       projectSnapshot,
       buildProjectDataJoin(
@@ -365,9 +360,28 @@ export const fetchLibrarySummary = async () => {
         lockDependencySnapshot.syncId,
       ),
     )
+    .groupBy(
+      lockDependencySnapshot.dependencyId,
+      lockDependencySnapshot.projectId,
+    )
+    .as("usage_by_project");
+
+  const usageCountExpression = sql<number>`count(${usageByProject.projectId})`;
+
+  const rows = await db
+    .select({
+      dependencyId: dependency.id,
+      dependencyName: dependency.name,
+      usageCount: usageCountExpression,
+    })
+    .from(usageByProject)
+    .leftJoin(
+      dependency,
+      eq(usageByProject.dependencyId, dependency.id),
+    )
     .groupBy(dependency.id, dependency.name)
     .orderBy(
-      desc(sql`count(distinct ${lockDependencySnapshot.projectId})`),
+      desc(usageCountExpression),
       asc(dependency.name),
     );
 
@@ -394,8 +408,22 @@ export const fetchProjectSummary = async () => {
       lastActivityAt: projectSnapshot.lastActivityAt,
     })
     .from(projectSnapshot)
-    .leftJoin(project, eq(projectSnapshot.projectId, project.id))
+    .innerJoin(project, eq(projectSnapshot.projectId, project.id))
+    .innerJoin(
+      lockDependencySnapshot,
+      buildProjectDataJoin(
+        runId,
+        lockDependencySnapshot.projectId,
+        lockDependencySnapshot.syncId,
+      ),
+    )
     .where(withActiveProjectSnapshot(and(eq(projectSnapshot.syncId, runId))))
+    .groupBy(
+      project.id,
+      project.name,
+      project.pathWithNamespace,
+      projectSnapshot.lastActivityAt,
+    )
     .orderBy(asc(project.name), asc(project.pathWithNamespace));
 
   return { baseUrl, projects: rows };

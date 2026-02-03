@@ -87,6 +87,23 @@ const requireEnv = (key: string): string => {
   return value;
 };
 
+class GitLabApiError extends Error {
+  status: number;
+  path: string;
+  body: string;
+
+  constructor(status: number, path: string, body: string) {
+    super(`GitLab API error ${status} on ${path}: ${body}`);
+    this.name = "GitLabApiError";
+    this.status = status;
+    this.path = path;
+    this.body = body;
+  }
+}
+
+const isRetryableStatus = (status: number) =>
+  status === 500 || status === 502 || status === 503 || status === 504;
+
 const normalizeGroupPath = (value: string) =>
   value.trim().replace(/^\/+|\/+$/g, "");
 
@@ -444,9 +461,11 @@ export const fetchJson = async <T>(
 
     if (!response.ok) {
       const body = await response.text();
-      throw new Error(
-        `GitLab API error ${response.status} on ${path}: ${body}`,
-      );
+      if (isRetryableStatus(response.status) && attempt < maxRetries) {
+        await sleep(config.retryDelayMs * (attempt + 1));
+        continue;
+      }
+      throw new GitLabApiError(response.status, path, body);
     }
 
     const data = (await response.json()) as T;
@@ -461,22 +480,50 @@ export const fetchAllPages = async <T>(
   throttler: Throttler,
   rateLimiter: RateLimiter,
   path: string,
+  options?: {
+    label?: string;
+    log?: (message: string) => void;
+    logEveryPages?: number;
+  },
 ): Promise<T[]> => {
   const results: T[] = [];
   let page = 1;
   let nextPage = "1";
+  let pageCount = 0;
+  const log = options?.log;
+  const logEveryPages = options?.logEveryPages ?? 0;
+  const label = options?.label ?? path;
 
   while (nextPage) {
     const pagePath = `${path}${path.includes("?") ? "&" : "?"}per_page=100&page=${page}`;
-    const { data, response } = await fetchJson<T[]>(
-      config,
-      throttler,
-      rateLimiter,
-      pagePath,
-    );
-    results.push(...data);
-    nextPage = response.headers.get("x-next-page") ?? "";
-    page = nextPage ? Number(nextPage) : 0;
+    try {
+      const { data, response } = await fetchJson<T[]>(
+        config,
+        throttler,
+        rateLimiter,
+        pagePath,
+      );
+      results.push(...data);
+      pageCount += 1;
+      if (log && logEveryPages > 0 && pageCount % logEveryPages === 0) {
+        log(
+          `[gitlab] ${label} page ${page} fetched (${data.length} items, ${results.length} total)`,
+        );
+      }
+      nextPage = response.headers.get("x-next-page") ?? "";
+      page = nextPage ? Number(nextPage) : 0;
+    } catch (error) {
+      if (
+        error instanceof GitLabApiError &&
+        isRetryableStatus(error.status)
+      ) {
+        console.warn(
+          `[gitlab] ${error.message} (page ${page}); returning partial results (${results.length})`,
+        );
+        break;
+      }
+      throw error;
+    }
   }
 
   return results;

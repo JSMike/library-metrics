@@ -3,7 +3,7 @@ import {
   createFileRoute,
   type SearchSchemaInput,
 } from '@tanstack/react-router'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { trpcClient } from '@/lib/trpc-client'
 import './libraries.scss'
 
@@ -76,6 +76,8 @@ function LibrariesPage() {
   const { librarySummary } = Route.useLoaderData()
   const { query, page, pageSize } = Route.useSearch()
   const navigate = Route.useNavigate()
+  const [sortKey, setSortKey] = useState<'library' | 'usage' | null>(null)
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
 
   const filteredLibraries = useMemo(() => {
     const normalized = query.trim().toLowerCase()
@@ -87,18 +89,66 @@ function LibrariesPage() {
     )
   }, [librarySummary, query])
 
+  const sortedLibraries = useMemo(() => {
+    if (!sortKey) {
+      return filteredLibraries
+    }
+    const collator = new Intl.Collator(undefined, {
+      numeric: true,
+      sensitivity: 'base',
+    })
+    const sorted = [...filteredLibraries].sort((left, right) => {
+      if (sortKey === 'usage') {
+        const usageDiff = (left.usageCount ?? 0) - (right.usageCount ?? 0)
+        if (usageDiff !== 0) {
+          return usageDiff
+        }
+      }
+      const nameDiff = collator.compare(
+        left.dependencyName ?? '',
+        right.dependencyName ?? '',
+      )
+      if (nameDiff !== 0) {
+        return nameDiff
+      }
+      return left.dependencyId - right.dependencyId
+    })
+    return sortDirection === 'desc' ? sorted.reverse() : sorted
+  }, [filteredLibraries, sortDirection, sortKey])
+
   const totalPages = Math.max(
     1,
-    Math.ceil(filteredLibraries.length / pageSize),
+    Math.ceil(sortedLibraries.length / pageSize),
   )
   const currentPage = Math.min(page, totalPages)
   const start = (currentPage - 1) * pageSize
-  const pagedLibraries = filteredLibraries.slice(start, start + pageSize)
+  const pagedLibraries = sortedLibraries.slice(start, start + pageSize)
   const rangeStart = start + 1
   const rangeEnd = Math.min(
-    filteredLibraries.length,
+    sortedLibraries.length,
     start + pagedLibraries.length,
   )
+  const totalLibraries = sortedLibraries.length
+
+  const toggleSort = (key: 'library' | 'usage') => {
+    if (sortKey === key) {
+      setSortDirection((direction) =>
+        direction === 'asc' ? 'desc' : 'asc',
+      )
+      return
+    }
+    setSortKey(key)
+    setSortDirection('asc')
+  }
+
+  const getSortLabel = (key: 'library' | 'usage') =>
+    sortKey === key ? (sortDirection === 'asc' ? ' ^' : ' v') : ''
+  const getAriaSort = (key: 'library' | 'usage') =>
+    sortKey === key
+      ? sortDirection === 'asc'
+        ? 'ascending'
+        : 'descending'
+      : 'none'
   const updateSearch = (
     next: Partial<{ query: string; page: number; pageSize: number }>,
   ) => {
@@ -179,8 +229,30 @@ function LibrariesPage() {
           <table>
             <thead>
               <tr>
-                <th>Library</th>
-                <th>Usage</th>
+                <th aria-sort={getAriaSort('library')}>
+                  <button
+                    type="button"
+                    className="table-sort-button"
+                    onClick={() => toggleSort('library')}
+                  >
+                    Library
+                    <span className="table-sort-indicator">
+                      {getSortLabel('library')}
+                    </span>
+                  </button>
+                </th>
+                <th aria-sort={getAriaSort('usage')}>
+                  <button
+                    type="button"
+                    className="table-sort-button"
+                    onClick={() => toggleSort('usage')}
+                  >
+                    Usage
+                    <span className="table-sort-indicator">
+                      {getSortLabel('usage')}
+                    </span>
+                  </button>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -213,10 +285,10 @@ function LibrariesPage() {
         </div>
       )}
 
-      {filteredLibraries.length > pageSize ? (
+      {sortedLibraries.length > pageSize ? (
         <div className="libraries-pagination">
           <span className="libraries-pagination-summary">
-            Showing {rangeStart} - {rangeEnd} of {filteredLibraries.length}
+            Showing {rangeStart} - {rangeEnd} of {totalLibraries}
           </span>
           <button
             type="button"

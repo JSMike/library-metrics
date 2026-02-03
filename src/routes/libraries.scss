@@ -75,6 +75,27 @@
     font-weight: 600;
   }
 
+  .table-sort-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  .table-sort-indicator {
+    font-size: 0.75em;
+    letter-spacing: 0.02em;
+  }
+
   tbody tr:last-child td {
     border-bottom: none;
   }

@@ -1,6 +1,6 @@
 # Issue Index
 
-Generated: 2026-02-02
+Generated: 2026-02-03
 
 ## By Status
 
@@ -51,3 +51,8 @@ Generated: 2026-02-02
 | [LM-21](./LM-21/issue.md) | Add range summary to dashboard pagination | 2026-02-02 |
 | [LM-23](./LM-23/issue.md) | Filter project list to projects with package.json | 2026-02-02 |
 | [LM-22](./LM-22/issue.md) | Support scanning multiple GitLab groups accessible to the user | 2026-02-02 |
+| [LM-24](./LM-24/issue.md) | Handle GitLab 5xx errors during paged fetches | 2026-02-03 |
+| [LM-25](./LM-25/issue.md) | Add verbose progress logging for group and project discovery | 2026-02-03 |
+| [LM-26](./LM-26/issue.md) | Make library/usage table headers buttons for sorting | 2026-02-03 |
+| [LM-27](./LM-27/issue.md) | Hide projects without resolved dependencies by default | 2026-02-03 |
+| [LM-28](./LM-28/issue.md) | Count library usage by distinct projects | 2026-02-03 |

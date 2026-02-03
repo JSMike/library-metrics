@@ -1,4 +1,9 @@
-import { Link, createFileRoute } from '@tanstack/react-router'
+import {
+  Link,
+  Outlet,
+  createFileRoute,
+  useRouterState,
+} from '@tanstack/react-router'
 import { getUsageTargetDetail } from '@/server/reporting'
 import './queries.scss'
 
@@ -33,6 +38,13 @@ export const Route = createFileRoute('/queries/$targetKey')({
 
 function TargetDetailPage() {
   const { detail, targetKey } = Route.useLoaderData()
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  })
+
+  if (targetKey && pathname.startsWith(`/queries/${targetKey}/`)) {
+    return <Outlet />
+  }
 
   if (!targetKey) {
     return (

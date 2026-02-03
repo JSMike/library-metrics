@@ -1,4 +1,9 @@
-import { Link, createFileRoute } from '@tanstack/react-router'
+import {
+  Link,
+  Outlet,
+  createFileRoute,
+  useRouterState,
+} from '@tanstack/react-router'
 import { useMemo } from 'react'
 import { trpcClient } from '@/lib/trpc-client'
 import './queries.scss'
@@ -49,6 +54,13 @@ function QueriesPage() {
   const { usageTargets } = Route.useLoaderData()
   const { query, page, pageSize } = Route.useSearch()
   const navigate = Route.useNavigate()
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  })
+
+  if (pathname !== '/queries' && pathname.startsWith('/queries/')) {
+    return <Outlet />
+  }
 
   const filteredTargets = useMemo(() => {
     const normalized = query.trim().toLowerCase()

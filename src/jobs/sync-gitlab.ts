@@ -478,12 +478,16 @@ const stripVersionSpec = (versionSpec: string) => {
 };
 
 const toRegex = (query: (typeof usageQueries)[number]) => {
+  const pattern = query.regex?.trim();
+  if (!pattern) {
+    return null;
+  }
   const flags = query.flags
     ? query.flags.includes("g")
       ? query.flags
       : `${query.flags}g`
     : "g";
-  return new RegExp(query.regex, flags);
+  return new RegExp(pattern, flags);
 };
 
 const countMatches = (regex: RegExp, text: string) => {
@@ -1156,10 +1160,16 @@ const runSync = async () => {
           }
           } catch (error) {
             zoektFailed = true;
-            logWarn(
-              `[sync] zoekt search failed for group ${groupInfo.full_path} (${searchQuery.label})`,
-              error,
-            );
+            if (isBlobSearchUnsupported(error)) {
+              logWarn(
+                `[sync] zoekt search unavailable for group ${groupInfo.full_path} (${searchQuery.label}); falling back to basic search.`,
+              );
+            } else {
+              logWarn(
+                `[sync] zoekt search failed for group ${groupInfo.full_path} (${searchQuery.label})`,
+                error,
+              );
+            }
           }
         }
       }
@@ -1286,12 +1296,21 @@ const runSync = async () => {
     const usageSearchableQueries = usageQueries
       .map((query) => ({
         ...query,
-        searchText: query.searchText?.trim() ?? "",
+        zoektSearchText:
+          query.searchQuery?.trim() ?? query.searchText?.trim() ?? "",
       }))
-      .filter((query) => query.searchText.length > 0);
+      .filter(
+        (query) =>
+          query.searchType === "zoekt" && query.zoektSearchText.length > 0,
+      );
 
     for (const query of usageQueries) {
-      if (!query.searchText || query.searchText.trim().length === 0) {
+      if (query.searchType !== "zoekt") {
+        continue;
+      }
+      const zoektText =
+        query.searchQuery?.trim() ?? query.searchText?.trim() ?? "";
+      if (!zoektText) {
         usageSearchFailures.add(query.queryKey);
       }
     }
@@ -1313,7 +1332,7 @@ const runSync = async () => {
             break;
           }
           let queryHadError = false;
-          const searchText = query.searchText?.trim();
+          const searchText = query.zoektSearchText?.trim();
           if (!searchText) {
             usageSearchFailures.add(query.queryKey);
             continue;
@@ -1321,10 +1340,10 @@ const runSync = async () => {
           const extensionSet = new Set(
             query.extensions.map((ext) => ext.toLowerCase()),
           );
-          const searchQuery = buildUsageSearchQuery(
-            searchText,
-            Array.from(extensionSet),
-          );
+          const searchQuery =
+            query.searchQuery && query.searchQuery.trim().length > 0
+              ? query.searchQuery.trim()
+              : buildUsageSearchQuery(searchText, Array.from(extensionSet));
           for (const groupInfo of rootGroups) {
             if (usageSearchDisabled || queryHadError) {
               break;
@@ -1838,7 +1857,16 @@ const runSync = async () => {
           );
         }
         for (const query of queryList) {
-          queryMatchers.set(query.queryKey, toRegex(query));
+          const matcher = toRegex(query);
+          if (!matcher) {
+            if (!useZoektSearch) {
+              debug(
+                `[sync] ${projectLabel} skipping regex scan for ${query.queryKey} (no regex fallback configured)`,
+              );
+            }
+            continue;
+          }
+          queryMatchers.set(query.queryKey, matcher);
           for (const extension of query.extensions) {
             const ext = extension.toLowerCase();
             const list = queriesByExtension.get(ext) ?? [];

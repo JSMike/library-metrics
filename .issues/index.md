@@ -8,6 +8,7 @@ Generated: 2026-02-04
 
 | ID | Title | Complexity | Blocked By |
 | --- | --- | --- | --- |
+| [LM-38](./LM-38/issue.md) | Fix zoekt usage query search | medium | |
 | [LM-37](./LM-37/issue.md) | Store GitLab project members and group SAML links | medium | |
 | [LM-6](./LM-6/issue.md) | Make /projects search optional for header link | low | |
 | [LM-8](./LM-8/issue.md) | Optimize GitLab sync throttling and rate-limit handling | high | |

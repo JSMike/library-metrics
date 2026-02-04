@@ -29,7 +29,7 @@ High-level flow:
 6. **TanStack Start UI** renders dashboards and drill-downs.
 
 Key configuration lives in:
-- `src/lib/usage-queries.ts` (usage targets + queries)
+- `src/lib/usage-queries/` (usage targets + queries)
 - `.env` (GitLab credentials and sync tuning)
 
 ## Tech Stack (Docs)
@@ -111,7 +111,8 @@ bun run db:view
 
 ### Add or Change Usage Queries
 
-Edit `src/lib/usage-queries.ts` to add targets, sub-targets, or query patterns.
+Edit `src/lib/usage-queries/` to add targets, sub-targets, or query patterns.
+See `src/lib/usage-queries/README.md` for zoekt + regex guidance.
 
 ### Add Another Data Source
 

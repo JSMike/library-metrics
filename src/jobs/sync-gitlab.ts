@@ -1337,8 +1337,9 @@ const runSync = async () => {
             usageSearchFailures.add(query.queryKey);
             continue;
           }
+          const extensions = query.extensions ?? [];
           const extensionSet = new Set(
-            query.extensions.map((ext) => ext.toLowerCase()),
+            extensions.map((ext) => ext.toLowerCase()),
           );
           const searchQuery =
             query.searchQuery && query.searchQuery.trim().length > 0
@@ -1368,9 +1369,11 @@ const runSync = async () => {
                 if (isNodeModulesPath(result.path)) {
                   continue;
                 }
-                const ext = getExtension(result.path);
-                if (!extensionSet.has(ext)) {
-                  continue;
+                if (extensionSet.size > 0) {
+                  const ext = getExtension(result.path);
+                  if (!extensionSet.has(ext)) {
+                    continue;
+                  }
                 }
                 if (typeof result.project_id !== "number") {
                   continue;
@@ -1856,10 +1859,10 @@ const runSync = async () => {
             `[sync] ${projectLabel} usage scan skipped (no target dependencies found)`,
           );
         }
-        for (const query of queryList) {
-          const matcher = toRegex(query);
-          if (!matcher) {
-            if (!useZoektSearch) {
+          for (const query of queryList) {
+            const matcher = toRegex(query);
+            if (!matcher) {
+              if (!useZoektSearch) {
               debug(
                 `[sync] ${projectLabel} skipping regex scan for ${query.queryKey} (no regex fallback configured)`,
               );
@@ -1867,10 +1870,17 @@ const runSync = async () => {
             continue;
           }
           queryMatchers.set(query.queryKey, matcher);
-          for (const extension of query.extensions) {
-            const ext = extension.toLowerCase();
-            const list = queriesByExtension.get(ext) ?? [];
-            list.push(query);
+            const extensions = query.extensions ?? [];
+            if (extensions.length === 0) {
+              logWarn(
+                `[sync] ${projectLabel} skipping regex scan for ${query.queryKey} (no extensions configured)`,
+              );
+              continue;
+            }
+            for (const extension of extensions) {
+              const ext = extension.toLowerCase();
+              const list = queriesByExtension.get(ext) ?? [];
+              list.push(query);
             queriesByExtension.set(ext, list);
           }
         }

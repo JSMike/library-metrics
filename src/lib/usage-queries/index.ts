@@ -25,7 +25,7 @@ export const usageQueries: UsageQuery[] = usageTargets.flatMap((target) =>
       searchType: query.searchType,
       searchQuery: query.searchQuery,
       regex: query.regex,
-      extensions: query.extensions,
+      extensions: query.extensions ?? [],
       flags: query.flags,
     })),
   ),

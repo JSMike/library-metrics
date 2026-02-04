@@ -17,7 +17,8 @@ export a set of `usageTargets` for a domain or product.
 - `regex` is optional. If it is omitted and zoekt is unavailable, the query is
   skipped (no basic fallback scan).
 - If `regex` is provided, the basic tree-scan + regex fallback will be used when
-  zoekt is not available.
+  zoekt is not available. The fallback only runs when `extensions` are provided
+  (so we don't scan every file).
 
 ## Adding a new query set
 

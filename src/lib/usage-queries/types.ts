@@ -5,7 +5,7 @@ export type UsageQueryDefinition = {
   searchType?: "zoekt";
   searchQuery?: string;
   regex?: string;
-  extensions: string[];
+  extensions?: string[];
   flags?: string;
 };
 
@@ -34,6 +34,6 @@ export type UsageQuery = {
   searchType?: "zoekt";
   searchQuery?: string;
   regex?: string;
-  extensions: string[];
+  extensions?: string[];
   flags?: string;
 };

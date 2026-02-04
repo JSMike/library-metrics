@@ -1,0 +1,1 @@
+ALTER TABLE `gitlab_group` ADD `saml_group_links_json` text;

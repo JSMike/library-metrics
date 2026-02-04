@@ -20,6 +20,10 @@ export type GitLabGroupResponse = {
   full_path: string;
   web_url?: string;
   parent_id?: number | null;
+  saml_group_links?: Array<{
+    name?: string | null;
+    access_level?: number | null;
+  }>;
 };
 
 export type GitLabNamespaceResponse = {

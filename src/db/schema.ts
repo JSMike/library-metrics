@@ -51,6 +51,8 @@ export const gitlabGroup = sqliteTable(
     path: text("path").notNull(),
     name: text("name").notNull(),
     webUrl: text("web_url"),
+    samlGroupLinksJson: text("saml_group_links_json", { mode: "json" })
+      .$type<Array<{ name: string; access_level: number }> | null>(),
   },
   (table) => ({
     gitlabIdIdx: uniqueIndex("gitlab_group_gitlab_id_idx").on(table.gitlabId),

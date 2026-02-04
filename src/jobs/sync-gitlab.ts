@@ -12,6 +12,7 @@ import {
   project,
   projectDependencySnapshot,
   projectFileSnapshot,
+  projectMemberSnapshot,
   projectSnapshot,
   syncRun,
   usageResult,
@@ -50,6 +51,14 @@ type GitLabFileResponse = {
   blob_id?: string;
 };
 
+type GitLabProjectMemberResponse = {
+  id: number;
+  username: string;
+  name: string;
+  state?: string | null;
+  access_level?: number | null;
+};
+
 type ParsedPackage = {
   path: string;
   raw: string;
@@ -81,6 +90,9 @@ const lockfileNames = [
   "bun.lock",
   "bun.lockb",
 ] as const;
+
+const MINIMUM_MEMBER_ACCESS_LEVEL = 30;
+const MEMBER_ACTIVE_STATE = "active";
 
 const zoektLockfileSearchQuery =
   "file:(package-lock\\.json|npm-shrinkwrap\\.json|yarn\\.lock|pnpm-lock\\.yaml|bun\\.lockb?|deno\\.lock) -file:node_modules";
@@ -656,6 +668,20 @@ const fetchLatestCommit = async (
   return data[0] ?? null;
 };
 
+const fetchProjectMembers = async (
+  config: ReturnType<typeof getGitLabConfig>,
+  throttler: Throttler,
+  rateLimiter: RateLimiter,
+  projectId: number,
+) =>
+  fetchAllPages<GitLabProjectMemberResponse>(
+    config,
+    throttler,
+    rateLimiter,
+    `/projects/${projectId}/members`,
+  );
+
+
 const loadPreviousSnapshot = async (projectId: number) => {
   const rows = await db
     .select({
@@ -864,6 +890,12 @@ const runSync = async () => {
 
   try {
     const groupMap = await buildGroupMap();
+    const groupGitlabIdByRow = new Map<number, number>();
+    for (const [gitlabId, rowId] of groupMap.entries()) {
+      groupGitlabIdByRow.set(rowId, gitlabId);
+    }
+    const samlLinksFetched = new Set<number>();
+    const samlLinksFailed = new Set<number>();
     const groupFilter = buildGroupFilter(
       config.groupIncludePaths,
       config.groupExcludePaths,
@@ -961,7 +993,8 @@ const runSync = async () => {
         const parentGroupId = groupInfo.parent_id
           ? groupMap.get(groupInfo.parent_id) ?? null
           : null;
-        await ensureGroup(groupInfo, groupMap, parentGroupId);
+        const rowId = await ensureGroup(groupInfo, groupMap, parentGroupId);
+        groupGitlabIdByRow.set(rowId, groupInfo.id);
       }
 
       if (scopedGroups.length === 0) {
@@ -1027,6 +1060,7 @@ const runSync = async () => {
         ? await ensureGroupChain(groupInfo.parent_id, visited)
         : null;
       const rowId = await ensureGroup(groupInfo, groupMap, parentRowId);
+      groupGitlabIdByRow.set(rowId, groupInfo.id);
       groupRowCache.set(groupId, rowId);
       return rowId;
     };
@@ -1048,6 +1082,7 @@ const runSync = async () => {
     const projectMap = await buildProjectMap();
     const projectById = new Map<number, GitLabProjectResponse>();
     const projectFallbackGroup = new Map<number, number>();
+    const projectFallbackGroupGitlabId = new Map<number, number>();
     const searchProjectIds = new Set<number>();
     const fallbackGroups = new Set<number>();
     const searchLockfilePathsByProject = new Map<number, Set<string>>();
@@ -1177,6 +1212,7 @@ const runSync = async () => {
         groupMap,
         parentGroupId,
       );
+      groupGitlabIdByRow.set(groupRowId, groupInfo.id);
       const groupProjects = await fetchAllPages<GitLabProjectResponse>(
         config,
         throttler,
@@ -1196,6 +1232,7 @@ const runSync = async () => {
         }
         projectById.set(projectInfo.id, projectInfo);
         projectFallbackGroup.set(projectInfo.id, groupRowId);
+        projectFallbackGroupGitlabId.set(projectInfo.id, groupInfo.id);
       }
     }
 
@@ -1367,6 +1404,106 @@ const runSync = async () => {
       }
     }
 
+    const normalizeSamlLinks = (
+      links: NonNullable<GitLabGroupResponse["saml_group_links"]>,
+    ) =>
+      links
+        .filter(
+          (link) =>
+            typeof link.name === "string" &&
+            link.name.trim().length > 0 &&
+            typeof link.access_level === "number",
+        )
+        .map((link) => ({
+          name: link.name!.trim(),
+          access_level: link.access_level!,
+        }));
+
+    const ensureGroupSamlLinks = async (
+      gitlabGroupId: number | null,
+      groupRowId: number,
+    ) => {
+      if (!gitlabGroupId) {
+        return;
+      }
+      if (
+        samlLinksFetched.has(gitlabGroupId) ||
+        samlLinksFailed.has(gitlabGroupId)
+      ) {
+        return;
+      }
+
+      try {
+        const groupInfo = await fetchGroupInfoById(gitlabGroupId);
+        if (!groupInfo || !Array.isArray(groupInfo.saml_group_links)) {
+          samlLinksFetched.add(gitlabGroupId);
+          return;
+        }
+        const normalized = normalizeSamlLinks(groupInfo.saml_group_links);
+        if (normalized.length === 0) {
+          samlLinksFetched.add(gitlabGroupId);
+          return;
+        }
+        await db
+          .update(gitlabGroup)
+          .set({
+            samlGroupLinksJson: normalized,
+          })
+          .where(eq(gitlabGroup.id, groupRowId));
+        samlLinksFetched.add(gitlabGroupId);
+      } catch (error) {
+        samlLinksFailed.add(gitlabGroupId);
+        logWarn(
+          `[sync] failed to load saml group links for group ${gitlabGroupId}`,
+          error,
+        );
+      }
+    };
+
+    const syncProjectMembers = async (
+      projectId: number,
+      gitlabProjectId: number,
+      projectLabel: string,
+    ) => {
+      try {
+        const members = await fetchProjectMembers(
+          config,
+          throttler,
+          rateLimiter,
+          gitlabProjectId,
+        );
+        const filteredMembers = members.filter((member) => {
+          const accessLevel = member.access_level ?? 0;
+          const state = member.state ?? "";
+          return (
+            accessLevel >= MINIMUM_MEMBER_ACCESS_LEVEL &&
+            state === MEMBER_ACTIVE_STATE
+          );
+        });
+
+        await db
+          .delete(projectMemberSnapshot)
+          .where(eq(projectMemberSnapshot.projectId, projectId));
+
+        if (filteredMembers.length > 0) {
+          await db.insert(projectMemberSnapshot).values(
+            filteredMembers.map((member) => ({
+              projectId,
+              syncId: runId,
+              username: member.username ?? null,
+              name: member.name ?? null,
+              accessLevel: member.access_level ?? null,
+            })),
+          );
+        }
+        debug(
+          `[sync] ${projectLabel} members stored (${filteredMembers.length}/${members.length})`,
+        );
+      } catch (error) {
+        logWarn(`[sync] ${projectLabel} members fetch failed`, error);
+      }
+    };
+
     let completedProjects = 0;
 
     for (const [index, projectInfo] of projects.entries()) {
@@ -1378,10 +1515,19 @@ const runSync = async () => {
       try {
         const projectStartedAt = Date.now();
         const fallbackGroupId = projectFallbackGroup.get(projectInfo.id) ?? null;
+        const fallbackGroupGitlabId =
+          projectFallbackGroupGitlabId.get(projectInfo.id) ?? null;
         const namespace = projectInfo.namespace ?? null;
         let projectGroupId = fallbackGroupId;
-        if (!projectGroupId && namespace && namespace.kind !== "user") {
-          projectGroupId = await ensureGroupChain(namespace.id);
+        let projectGitlabGroupId = fallbackGroupGitlabId;
+        if (namespace && namespace.kind !== "user") {
+          projectGitlabGroupId = namespace.id;
+          if (!projectGroupId) {
+            projectGroupId = await ensureGroupChain(namespace.id);
+          }
+        }
+        if (!projectGitlabGroupId && projectGroupId) {
+          projectGitlabGroupId = groupGitlabIdByRow.get(projectGroupId) ?? null;
         }
         if (!projectGroupId) {
           logWarn(`[sync] skipping ${projectLabel}: missing group mapping`);
@@ -1393,6 +1539,8 @@ const runSync = async () => {
           projectInfo,
           projectMap,
         );
+        await ensureGroupSamlLinks(projectGitlabGroupId, projectGroupId);
+        await syncProjectMembers(projectId, projectInfo.id, projectLabel);
         const latestCommit = await fetchLatestCommit(
           config,
           throttler,

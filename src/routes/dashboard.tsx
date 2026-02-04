@@ -4,15 +4,27 @@ import { trpcClient } from '@/lib/trpc-client'
 import './dashboard.scss'
 
 export const dashboardLoader = async () => {
-  const [latestSyncRun, librarySummary, projectSummary, usageTargets] =
-    await Promise.all([
-      trpcClient.latestSyncRun.query(),
-      trpcClient.librarySummary.query(),
-      trpcClient.projectSummary.query(),
-      trpcClient.usageTargets.query(),
-    ])
+  const [
+    latestSyncRun,
+    librarySummary,
+    projectSummary,
+    usageTargets,
+    reportsList,
+  ] = await Promise.all([
+    trpcClient.latestSyncRun.query(),
+    trpcClient.librarySummary.query(),
+    trpcClient.projectSummary.query(),
+    trpcClient.usageTargets.query(),
+    trpcClient.reportsList.query(),
+  ])
 
-  return { latestSyncRun, librarySummary, projectSummary, usageTargets }
+  return {
+    latestSyncRun,
+    librarySummary,
+    projectSummary,
+    usageTargets,
+    reportsList,
+  }
 }
 
 type DashboardData = Awaited<ReturnType<typeof dashboardLoader>>
@@ -49,10 +61,12 @@ export function DashboardPage({
   librarySummary,
   projectSummary,
   usageTargets,
+  reportsList,
 }: DashboardData) {
   const [libraryFilter, setLibraryFilter] = useState('')
   const [libraryPage, setLibraryPage] = useState(1)
   const [usagePage, setUsagePage] = useState(1)
+  const [reportsPage, setReportsPage] = useState(1)
   const [librarySortKey, setLibrarySortKey] = useState<
     'library' | 'usage' | null
   >(null)
@@ -157,6 +171,21 @@ export function DashboardPage({
   const usageRangeEnd = Math.min(
     usageTargets.length,
     usageStart + pagedUsageTargets.length,
+  )
+  const totalReportsPages = Math.max(
+    1,
+    Math.ceil(reportsList.length / PAGE_SIZE),
+  )
+  const currentReportsPage = Math.min(reportsPage, totalReportsPages)
+  const reportsStart = (currentReportsPage - 1) * PAGE_SIZE
+  const pagedReports = reportsList.slice(
+    reportsStart,
+    reportsStart + PAGE_SIZE,
+  )
+  const reportsRangeStart = reportsStart + 1
+  const reportsRangeEnd = Math.min(
+    reportsList.length,
+    reportsStart + pagedReports.length,
   )
 
   return (
@@ -368,6 +397,75 @@ export function DashboardPage({
                 )
               }
               disabled={currentUsagePage >= totalUsagePages}
+            >
+              Next
+            </button>
+          </div>
+        ) : null}
+      </section>
+
+      <section>
+        <div className="dashboard-section-header">
+          <h2>Reports</h2>
+          <Link className="dashboard-link" to="/reports">
+            See all reports
+          </Link>
+        </div>
+        {reportsList.length === 0 ? (
+          <p>No reports configured yet.</p>
+        ) : (
+          <div className="dashboard-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Report</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pagedReports.map((report) => (
+                  <tr key={report.reportId}>
+                    <td>
+                      <Link
+                        to="/reports/$reportId"
+                        params={{ reportId: report.reportId }}
+                      >
+                        {report.title}
+                      </Link>
+                    </td>
+                    <td>{report.description}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {reportsList.length > PAGE_SIZE ? (
+          <div className="dashboard-pagination">
+            <span className="dashboard-pagination-summary">
+              Showing {reportsRangeStart} - {reportsRangeEnd} of{' '}
+              {reportsList.length}
+            </span>
+            <button
+              type="button"
+              onClick={() =>
+                setReportsPage((page) => Math.max(1, page - 1))
+              }
+              disabled={currentReportsPage <= 1}
+            >
+              Previous
+            </button>
+            <span>
+              Page {currentReportsPage} of {totalReportsPages}
+            </span>
+            <button
+              type="button"
+              onClick={() =>
+                setReportsPage((page) =>
+                  Math.min(totalReportsPages, page + 1),
+                )
+              }
+              disabled={currentReportsPage >= totalReportsPages}
             >
               Next
             </button>

@@ -1,6 +1,6 @@
 # Issue Index
 
-Generated: 2026-02-03
+Generated: 2026-02-04
 
 ## By Status
 
@@ -62,3 +62,5 @@ Generated: 2026-02-03
 | [LM-26](./LM-26/issue.md) | Make library/usage table headers buttons for sorting | 2026-02-03 |
 | [LM-27](./LM-27/issue.md) | Hide projects without resolved dependencies by default | 2026-02-03 |
 | [LM-28](./LM-28/issue.md) | Count library usage by distinct projects | 2026-02-03 |
+| [LM-35](./LM-35/issue.md) | Add reports list and template report page | 2026-02-04 |
+| [LM-36](./LM-36/issue.md) | Add not found component for router | 2026-02-04 |

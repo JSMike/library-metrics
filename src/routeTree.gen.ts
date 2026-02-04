@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as QueriesRouteImport } from './routes/queries'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as ProjectRouteImport } from './routes/project'
@@ -16,6 +17,7 @@ import { Route as LibraryRouteImport } from './routes/library'
 import { Route as LibrariesRouteImport } from './routes/libraries'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ReportsReportIdRouteImport } from './routes/reports.$reportId'
 import { Route as QueriesTargetKeyRouteImport } from './routes/queries.$targetKey'
 import { Route as QueriesTargetKeySubTargetKeyRouteImport } from './routes/queries.$targetKey.$subTargetKey'
 import { Route as ApiTrpcPathRouteImport } from './routes/api/trpc/$path'
@@ -23,6 +25,11 @@ import { Route as QueriesTargetKeySubTargetKeyQueryKeyRouteImport } from './rout
 import { Route as ProjectUsageTargetKeySubTargetKeyRouteImport } from './routes/project.usage.$targetKey.$subTargetKey'
 import { Route as ProjectUsageTargetKeySubTargetKeyQueryKeyRouteImport } from './routes/project.usage.$targetKey.$subTargetKey.$queryKey'
 
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const QueriesRoute = QueriesRouteImport.update({
   id: '/queries',
   path: '/queries',
@@ -57,6 +64,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsReportIdRoute = ReportsReportIdRouteImport.update({
+  id: '/$reportId',
+  path: '/$reportId',
+  getParentRoute: () => ReportsRoute,
 } as any)
 const QueriesTargetKeyRoute = QueriesTargetKeyRouteImport.update({
   id: '/$targetKey',
@@ -101,7 +113,9 @@ export interface FileRoutesByFullPath {
   '/project': typeof ProjectRouteWithChildren
   '/projects': typeof ProjectsRoute
   '/queries': typeof QueriesRouteWithChildren
+  '/reports': typeof ReportsRouteWithChildren
   '/queries/$targetKey': typeof QueriesTargetKeyRouteWithChildren
+  '/reports/$reportId': typeof ReportsReportIdRoute
   '/api/trpc/$path': typeof ApiTrpcPathRoute
   '/queries/$targetKey/$subTargetKey': typeof QueriesTargetKeySubTargetKeyRouteWithChildren
   '/project/usage/$targetKey/$subTargetKey': typeof ProjectUsageTargetKeySubTargetKeyRouteWithChildren
@@ -116,7 +130,9 @@ export interface FileRoutesByTo {
   '/project': typeof ProjectRouteWithChildren
   '/projects': typeof ProjectsRoute
   '/queries': typeof QueriesRouteWithChildren
+  '/reports': typeof ReportsRouteWithChildren
   '/queries/$targetKey': typeof QueriesTargetKeyRouteWithChildren
+  '/reports/$reportId': typeof ReportsReportIdRoute
   '/api/trpc/$path': typeof ApiTrpcPathRoute
   '/queries/$targetKey/$subTargetKey': typeof QueriesTargetKeySubTargetKeyRouteWithChildren
   '/project/usage/$targetKey/$subTargetKey': typeof ProjectUsageTargetKeySubTargetKeyRouteWithChildren
@@ -132,7 +148,9 @@ export interface FileRoutesById {
   '/project': typeof ProjectRouteWithChildren
   '/projects': typeof ProjectsRoute
   '/queries': typeof QueriesRouteWithChildren
+  '/reports': typeof ReportsRouteWithChildren
   '/queries/$targetKey': typeof QueriesTargetKeyRouteWithChildren
+  '/reports/$reportId': typeof ReportsReportIdRoute
   '/api/trpc/$path': typeof ApiTrpcPathRoute
   '/queries/$targetKey/$subTargetKey': typeof QueriesTargetKeySubTargetKeyRouteWithChildren
   '/project/usage/$targetKey/$subTargetKey': typeof ProjectUsageTargetKeySubTargetKeyRouteWithChildren
@@ -149,7 +167,9 @@ export interface FileRouteTypes {
     | '/project'
     | '/projects'
     | '/queries'
+    | '/reports'
     | '/queries/$targetKey'
+    | '/reports/$reportId'
     | '/api/trpc/$path'
     | '/queries/$targetKey/$subTargetKey'
     | '/project/usage/$targetKey/$subTargetKey'
@@ -164,7 +184,9 @@ export interface FileRouteTypes {
     | '/project'
     | '/projects'
     | '/queries'
+    | '/reports'
     | '/queries/$targetKey'
+    | '/reports/$reportId'
     | '/api/trpc/$path'
     | '/queries/$targetKey/$subTargetKey'
     | '/project/usage/$targetKey/$subTargetKey'
@@ -179,7 +201,9 @@ export interface FileRouteTypes {
     | '/project'
     | '/projects'
     | '/queries'
+    | '/reports'
     | '/queries/$targetKey'
+    | '/reports/$reportId'
     | '/api/trpc/$path'
     | '/queries/$targetKey/$subTargetKey'
     | '/project/usage/$targetKey/$subTargetKey'
@@ -195,11 +219,19 @@ export interface RootRouteChildren {
   ProjectRoute: typeof ProjectRouteWithChildren
   ProjectsRoute: typeof ProjectsRoute
   QueriesRoute: typeof QueriesRouteWithChildren
+  ReportsRoute: typeof ReportsRouteWithChildren
   ApiTrpcPathRoute: typeof ApiTrpcPathRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/queries': {
       id: '/queries'
       path: '/queries'
@@ -248,6 +280,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/reports/$reportId': {
+      id: '/reports/$reportId'
+      path: '/$reportId'
+      fullPath: '/reports/$reportId'
+      preLoaderRoute: typeof ReportsReportIdRouteImport
+      parentRoute: typeof ReportsRoute
     }
     '/queries/$targetKey': {
       id: '/queries/$targetKey'
@@ -359,6 +398,17 @@ const QueriesRouteChildren: QueriesRouteChildren = {
 const QueriesRouteWithChildren =
   QueriesRoute._addFileChildren(QueriesRouteChildren)
 
+interface ReportsRouteChildren {
+  ReportsReportIdRoute: typeof ReportsReportIdRoute
+}
+
+const ReportsRouteChildren: ReportsRouteChildren = {
+  ReportsReportIdRoute: ReportsReportIdRoute,
+}
+
+const ReportsRouteWithChildren =
+  ReportsRoute._addFileChildren(ReportsRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
@@ -367,6 +417,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProjectRoute: ProjectRouteWithChildren,
   ProjectsRoute: ProjectsRoute,
   QueriesRoute: QueriesRouteWithChildren,
+  ReportsRoute: ReportsRouteWithChildren,
   ApiTrpcPathRoute: ApiTrpcPathRoute,
 }
 export const routeTree = rootRouteImport

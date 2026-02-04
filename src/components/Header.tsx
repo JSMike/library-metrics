@@ -17,6 +17,10 @@ export default function Header() {
         <div className="nav-item">
           <Link to="/projects">Projects</Link>
         </div>
+
+        <div className="nav-item">
+          <Link to="/reports">Reports</Link>
+        </div>
       </nav>
     </header>
   )

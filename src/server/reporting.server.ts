@@ -10,6 +10,7 @@ import {
   usageResult,
 } from "../db/schema";
 import { reportConfig } from "../lib/report-config";
+import { reportsList } from "../reports";
 import { usageQueries, usageTargets } from "../lib/usage-queries";
 
 const getLatestRunId = async () => {
@@ -97,6 +98,24 @@ const normalizeDependencyName = (
 const normalizeProjectPath = (path: string | undefined) => {
   const normalized = sanitizeLookup(path ?? "", 400);
   return normalized.length > 0 ? normalized : null;
+};
+
+const normalizeLibraryList = (libraries: string[]) => {
+  const normalized: string[] = [];
+  const seen = new Set<string>();
+  for (const library of libraries) {
+    const sanitized = sanitizeLookup(library ?? "", 200);
+    if (!sanitized) {
+      continue;
+    }
+    const lower = sanitized.toLowerCase();
+    if (seen.has(lower)) {
+      continue;
+    }
+    seen.add(lower);
+    normalized.push(lower);
+  }
+  return normalized;
 };
 
 type SemverParts = {
@@ -348,6 +367,8 @@ export const fetchLatestSyncRun = async () => {
   return rows[0] ?? null;
 };
 
+export const fetchReportsList = async () => reportsList;
+
 export const fetchLibrarySummary = async () => {
   const runId = await getLatestRunId();
   if (!runId) {
@@ -435,6 +456,115 @@ export const fetchProjectSummary = async () => {
     .orderBy(asc(project.name), asc(project.pathWithNamespace));
 
   return { baseUrl, projects: rows };
+};
+
+export const fetchProjectLibraryMatrix = async (options: {
+  libraries: string[];
+}) => {
+  const runId = await getLatestRunId();
+  const baseUrl = getGitLabBaseUrl();
+  const libraries = normalizeLibraryList(options.libraries ?? []);
+
+  if (!runId || libraries.length === 0) {
+    return { baseUrl, libraries, projects: [] as Array<{
+      projectId: number;
+      projectName: string | null;
+      projectPath: string | null;
+      lastActivityAt: number | null;
+      libraryVersions: Record<string, string[]>;
+    }> };
+  }
+
+  const rows = await db
+    .select({
+      projectId: project.id,
+      projectName: project.name,
+      projectPath: project.pathWithNamespace,
+      lastActivityAt: projectSnapshot.lastActivityAt,
+      dependencyName: dependency.name,
+      versionResolved: lockDependencySnapshot.versionResolved,
+    })
+    .from(lockDependencySnapshot)
+    .innerJoin(
+      dependency,
+      eq(lockDependencySnapshot.dependencyId, dependency.id),
+    )
+    .innerJoin(
+      projectSnapshot,
+      buildProjectDataJoin(
+        runId,
+        lockDependencySnapshot.projectId,
+        lockDependencySnapshot.syncId,
+      ),
+    )
+    .leftJoin(project, eq(lockDependencySnapshot.projectId, project.id))
+    .where(inArray(sql`lower(${dependency.name})`, libraries))
+    .groupBy(
+      project.id,
+      project.name,
+      project.pathWithNamespace,
+      projectSnapshot.lastActivityAt,
+      dependency.name,
+      lockDependencySnapshot.versionResolved,
+    )
+    .orderBy(
+      asc(project.name),
+      asc(project.pathWithNamespace),
+      asc(dependency.name),
+      asc(lockDependencySnapshot.versionResolved),
+    );
+
+  const projectMap = new Map<number, {
+    projectId: number;
+    projectName: string | null;
+    projectPath: string | null;
+    lastActivityAt: number | null;
+    libraryVersions: Map<string, Set<string>>;
+  }>();
+
+  for (const row of rows) {
+    const entry = projectMap.get(row.projectId) ?? {
+      projectId: row.projectId,
+      projectName: row.projectName ?? null,
+      projectPath: row.projectPath ?? null,
+      lastActivityAt: row.lastActivityAt ?? null,
+      libraryVersions: new Map<string, Set<string>>(),
+    };
+
+    const libraryKey = row.dependencyName?.toLowerCase() ?? "";
+    if (libraryKey) {
+      let versionSet = entry.libraryVersions.get(libraryKey);
+      if (!versionSet) {
+        versionSet = new Set<string>();
+        entry.libraryVersions.set(libraryKey, versionSet);
+      }
+      if (row.versionResolved) {
+        versionSet.add(row.versionResolved);
+      }
+    }
+
+    if (!projectMap.has(row.projectId)) {
+      projectMap.set(row.projectId, entry);
+    }
+  }
+
+  const projects = Array.from(projectMap.values()).map((entry) => {
+    const libraryVersions: Record<string, string[]> = {};
+    for (const [libraryKey, versions] of entry.libraryVersions.entries()) {
+      libraryVersions[libraryKey] = Array.from(versions).sort(
+        compareVersionStrings,
+      );
+    }
+    return {
+      projectId: entry.projectId,
+      projectName: entry.projectName,
+      projectPath: entry.projectPath,
+      lastActivityAt: entry.lastActivityAt,
+      libraryVersions,
+    };
+  });
+
+  return { baseUrl, libraries, projects };
 };
 
 export const fetchLibraryDetail = async (options: {

@@ -12,3 +12,19 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
     monospace;
 }
+
+.not-found {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 48px 24px;
+}
+
+.not-found-link {
+  font-weight: 600;
+  text-decoration: none;
+  color: #1f4b99;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}

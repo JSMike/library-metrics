@@ -1,13 +1,20 @@
 # Summary
 
-**Completed:** 2026-02-04
+**Issue:** LM-39 - Normalize links columns across views
+**Completed:** 2026-02-05
 
-## Overview
-- Standardized link columns across query, project, and library views with Code/Members links.
-- Added Queries navigation to the header.
-- Updated usage query detail data to include the GitLab base URL for link construction.
+## Outcome
+- Links columns are standardized across project/library/usage views.
+- Query detail routing now renders correctly.
+- The sub-target projects table includes Code/Members links, while the file-level query table only shows File and Matches.
 
-## Key Files
+## Key Changes
+- Added Links column to the `/queries/<target>/<sub-target>` projects table with Code/Members links.
+- Ensured nested query routes render via Outlet in the sub-target route.
+- Removed Links from the `/queries/<target>/<sub-target>/<query>` files table.
+
+## Files Changed
+- `src/routes/queries.$targetKey.$subTargetKey.tsx`
 - `src/routes/queries.$targetKey.$subTargetKey.$queryKey.tsx`
 - `src/server/reporting.server.ts`
 - `src/routes/projects.tsx`
@@ -15,4 +22,4 @@
 - `src/components/Header.tsx`
 
 ## Verification
-- User confirmed the UI changes looked good.
+- User confirmed the layout changes.

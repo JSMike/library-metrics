@@ -1,6 +1,6 @@
 # Issue Index
 
-Generated: 2026-02-04
+Generated: 2026-02-05
 
 ## By Status
 
@@ -67,4 +67,5 @@ Generated: 2026-02-04
 | [LM-36](./LM-36/issue.md) | Add not found component for router | 2026-02-04 |
 | [LM-38](./LM-38/issue.md) | Fix zoekt usage query search | 2026-02-04 |
 | [LM-39](./LM-39/issue.md) | Normalize links columns across views | 2026-02-04 |
+| [LM-41](./LM-41/issue.md) | Include package.json next to lockfiles | 2026-02-05 |
 | [LM-40](./LM-40/issue.md) | Show project members on project page | 2026-02-04 |

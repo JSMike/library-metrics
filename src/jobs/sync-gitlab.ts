@@ -140,6 +140,14 @@ const isNodeModulesPath = (path: string) =>
 
 const isRootPath = (path: string) => !path.includes("/");
 
+const isNotFoundError = (error: unknown) => {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+  const status = (error as { status?: number }).status;
+  return status === 404;
+};
+
 const isBlobSearchUnsupported = (error: unknown) => {
   if (!error || typeof error !== "object") {
     return false;
@@ -181,6 +189,25 @@ const resolveLockfileCandidates = (
     }
   }
   return candidates;
+};
+
+const buildPackageJsonPathsFromLockfiles = (
+  lockfilePaths: Set<string>,
+  existingPackageJsonPaths?: Set<string>,
+) => {
+  const dirs = new Set<string>();
+  for (const lockfilePath of lockfilePaths) {
+    dirs.add(getDirname(lockfilePath));
+  }
+  const candidates = new Set<string>();
+  for (const dir of dirs) {
+    candidates.add(dir ? `${dir}/package.json` : "package.json");
+  }
+  let result = Array.from(candidates);
+  if (existingPackageJsonPaths) {
+    result = result.filter((path) => existingPackageJsonPaths.has(path));
+  }
+  return result;
 };
 
 const extractDependencies = (
@@ -1142,22 +1169,31 @@ const runSync = async () => {
                 continue;
               }
               if (typeof result.project_id === "number") {
-                searchProjectIds.add(result.project_id);
+                const projectId = result.project_id;
                 if (searchQuery.label === "lockfile") {
+                  searchProjectIds.add(projectId);
                   addSearchPath(
                     searchLockfilePathsByProject,
-                    result.project_id,
+                    projectId,
                     result.path,
                   );
                 } else if (searchQuery.label === "root package.json") {
+                  const lockfiles =
+                    searchLockfilePathsByProject.get(projectId) ?? null;
+                  const hasRootLockfile =
+                    lockfiles && Array.from(lockfiles).some(isRootPath);
+                  if (!hasRootLockfile) {
+                    continue;
+                  }
+                  searchProjectIds.add(projectId);
                   addSearchPath(
                     searchPackageJsonPathsByProject,
-                    result.project_id,
+                    projectId,
                     result.path,
                   );
                 }
               }
-          }
+            }
           } catch (error) {
             zoektFailed = true;
             if (isBlobSearchUnsupported(error)) {
@@ -1626,12 +1662,10 @@ const runSync = async () => {
         let lockfilePaths = new Set<string>();
 
         if (useZoektSearch) {
-          packageJsonPaths = Array.from(
-            searchPackageJsonPathsByProject.get(projectInfo.id) ?? [],
-          );
           lockfilePaths = new Set(
             searchLockfilePathsByProject.get(projectInfo.id) ?? [],
           );
+          packageJsonPaths = buildPackageJsonPathsFromLockfiles(lockfilePaths);
         } else {
           const treeStart = Date.now();
           debug(`[sync] ${projectLabel} fetching repository tree`);
@@ -1646,15 +1680,6 @@ const runSync = async () => {
             `[sync] ${projectLabel} repository tree fetched (${treeEntries.length} entries, ${((Date.now() - treeStart) / 1000).toFixed(1)}s)`,
           );
 
-          packageJsonPaths = treeEntries
-            .filter(
-              (entry) =>
-                entry.type === "blob" &&
-                entry.path.endsWith("package.json") &&
-                !isNodeModulesPath(entry.path),
-            )
-            .map((entry) => entry.path);
-
           lockfilePaths = new Set(
             treeEntries
               .filter(
@@ -1664,6 +1689,21 @@ const runSync = async () => {
                   !isNodeModulesPath(entry.path),
               )
               .map((entry) => entry.path),
+          );
+
+          const existingPackageJsonPaths = new Set(
+            treeEntries
+              .filter(
+                (entry) =>
+                  entry.type === "blob" &&
+                  entry.path.endsWith("package.json") &&
+                  !isNodeModulesPath(entry.path),
+              )
+              .map((entry) => entry.path),
+          );
+          packageJsonPaths = buildPackageJsonPathsFromLockfiles(
+            lockfilePaths,
+            existingPackageJsonPaths,
           );
         }
 
@@ -1734,14 +1774,25 @@ const runSync = async () => {
 
         for (const packagePath of packageJsonPaths) {
           debug(`[sync] ${projectLabel} loading ${packagePath}`);
-          const pkgFile = await fetchFile(
-            config,
-            throttler,
-            rateLimiter,
-            projectInfo.id,
-            projectInfo.default_branch,
-            packagePath,
-          );
+          let pkgFile: ParsedPackage & { blobSha?: string };
+          try {
+            pkgFile = await fetchFile(
+              config,
+              throttler,
+              rateLimiter,
+              projectInfo.id,
+              projectInfo.default_branch,
+              packagePath,
+            );
+          } catch (error) {
+            if (isNotFoundError(error)) {
+              debug(
+                `[sync] ${projectLabel} skipping ${packagePath} (not found)`,
+              );
+              continue;
+            }
+            throw error;
+          }
 
           await storeProjectFile(
             projectId,

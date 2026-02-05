@@ -8,7 +8,6 @@ Generated: 2026-02-04
 
 | ID | Title | Complexity | Blocked By |
 | --- | --- | --- | --- |
-| [LM-38](./LM-38/issue.md) | Fix zoekt usage query search | medium | |
 | [LM-37](./LM-37/issue.md) | Store GitLab project members and group SAML links | medium | |
 | [LM-6](./LM-6/issue.md) | Make /projects search optional for header link | low | |
 | [LM-8](./LM-8/issue.md) | Optimize GitLab sync throttling and rate-limit handling | high | |
@@ -66,3 +65,6 @@ Generated: 2026-02-04
 | [LM-28](./LM-28/issue.md) | Count library usage by distinct projects | 2026-02-03 |
 | [LM-35](./LM-35/issue.md) | Add reports list and template report page | 2026-02-04 |
 | [LM-36](./LM-36/issue.md) | Add not found component for router | 2026-02-04 |
+| [LM-38](./LM-38/issue.md) | Fix zoekt usage query search | 2026-02-04 |
+| [LM-39](./LM-39/issue.md) | Normalize links columns across views | 2026-02-04 |
+| [LM-40](./LM-40/issue.md) | Show project members on project page | 2026-02-04 |

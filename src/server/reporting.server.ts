@@ -4,6 +4,7 @@ import {
   dependency,
   lockDependencySnapshot,
   project,
+  projectMemberSnapshot,
   projectSnapshot,
   syncRun,
   usageFileResult,
@@ -738,6 +739,25 @@ export const fetchProjectDetail = async (options: { projectPath?: string }) => {
     )
     .orderBy(asc(dependency.name), asc(lockDependencySnapshot.versionResolved));
 
+  const members = await db
+    .select({
+      name: projectMemberSnapshot.name,
+      username: projectMemberSnapshot.username,
+      accessLevel: projectMemberSnapshot.accessLevel,
+    })
+    .from(projectMemberSnapshot)
+    .where(
+      and(
+        eq(projectMemberSnapshot.projectId, projectInfo.projectId),
+        eq(projectMemberSnapshot.syncId, runId),
+      ),
+    )
+    .orderBy(
+      desc(projectMemberSnapshot.accessLevel),
+      asc(projectMemberSnapshot.name),
+      asc(projectMemberSnapshot.username),
+    );
+
   const sourceTargetKeys = getSourceTargetKeysForProject(projectPath);
 
   let sourceUsage: Array<{
@@ -798,6 +818,7 @@ export const fetchProjectDetail = async (options: { projectPath?: string }) => {
     projectPath: projectInfo.projectPath ?? "",
     lastActivityAt: projectInfo.lastActivityAt ?? null,
     dependencies,
+    members,
     sourceUsage,
     gitlabBaseUrl: getGitLabBaseUrl(),
   };
@@ -1570,6 +1591,7 @@ export const fetchUsageQueryDetail = async (
     subTargetTitle: getSubTargetTitle(targetKey, subTargetKey),
     queryKey,
     queryKeyTitle: getQueryTitle(targetKey, subTargetKey, queryKey),
+    gitlabBaseUrl: getGitLabBaseUrl(),
     projects: Array.from(projectMap.values()),
   };
 };

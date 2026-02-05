@@ -10,6 +10,12 @@ const stripControlChars = (value: string) =>
 const sanitizeSegment = (value: string) =>
   stripControlChars(value).trim().slice(0, SEGMENT_MAX_LENGTH)
 
+const joinGitLabUrl = (baseUrl: string, path: string) => {
+  const trimmed = baseUrl.replace(/\/+$/, '')
+  const cleanPath = path.replace(/^\/+/, '')
+  return `${trimmed}/${cleanPath}`
+}
+
 export const Route = createFileRoute(
   '/queries/$targetKey/$subTargetKey/$queryKey',
 )({
@@ -129,23 +135,52 @@ function QueryDetailPage() {
                       <tr>
                         <th>File</th>
                         <th>Matches</th>
+                        <th>Links</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {project.files.map((file) => (
-                        <tr key={file.filePath}>
-                          <td>
-                            {file.fileUrl ? (
-                              <a href={file.fileUrl} target="_blank" rel="noreferrer">
-                                {file.filePath}
-                              </a>
-                            ) : (
-                              file.filePath
-                            )}
-                          </td>
-                          <td>{file.matchCount}</td>
-                        </tr>
-                      ))}
+                      {project.files.map((file) => {
+                        const projectPath = project.projectPath ?? ''
+                        const codeUrl = projectPath
+                          ? joinGitLabUrl(detail.gitlabBaseUrl, projectPath)
+                          : null
+                        const membersUrl = projectPath
+                          ? joinGitLabUrl(
+                              detail.gitlabBaseUrl,
+                              `${projectPath}/-/project_members`,
+                            )
+                          : null
+                        return (
+                          <tr key={file.filePath}>
+                            <td>
+                              {file.fileUrl ? (
+                                <a href={file.fileUrl} target="_blank" rel="noreferrer">
+                                  {file.filePath}
+                                </a>
+                              ) : (
+                                file.filePath
+                              )}
+                            </td>
+                            <td>{file.matchCount}</td>
+                            <td>
+                              <span className="queries-links">
+                                {codeUrl ? (
+                                  <a href={codeUrl} target="_blank" rel="noreferrer">
+                                    Code
+                                  </a>
+                                ) : (
+                                  <span className="queries-muted">—</span>
+                                )}
+                                {membersUrl ? (
+                                  <a href={membersUrl} target="_blank" rel="noreferrer">
+                                    Members
+                                  </a>
+                                ) : null}
+                              </span>
+                            </td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>

@@ -166,7 +166,7 @@ function ProjectsPage() {
               <tr>
                 <th>Project</th>
                 <th>Last activity</th>
-                <th>GitLab</th>
+                <th>Links</th>
               </tr>
             </thead>
             <tbody>

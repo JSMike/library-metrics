@@ -103,6 +103,7 @@ function LibraryDetailPage() {
                 <th>Version</th>
                 <th>Usage</th>
                 <th>Projects</th>
+                <th>Links</th>
               </tr>
             </thead>
             <tbody>
@@ -125,18 +126,50 @@ function LibraryDetailPage() {
                             >
                               {project.projectName}
                             </Link>
-                            {project.projectPath ? (
-                              <a
-                                className="libraries-inline-link"
-                                href={joinGitLabUrl(baseUrl, project.projectPath)}
-                                target="_blank"
-                                rel="noreferrer"
-                              >
-                                GitLab
-                              </a>
-                            ) : null}
                           </li>
                         ))}
+                      </ul>
+                    )}
+                  </td>
+                  <td>
+                    {version.projects.length === 0 ? (
+                      <span className="libraries-muted">—</span>
+                    ) : (
+                      <ul className="libraries-projects">
+                        {version.projects.map((project) => {
+                          const projectPath = project.projectPath ?? ''
+                          const codeUrl = projectPath
+                            ? joinGitLabUrl(baseUrl, projectPath)
+                            : null
+                          const membersUrl = projectPath
+                            ? joinGitLabUrl(
+                                baseUrl,
+                                `${projectPath}/-/project_members`,
+                              )
+                            : null
+                          return (
+                            <li key={project.projectId}>
+                              <span className="libraries-links">
+                                {codeUrl ? (
+                                  <a href={codeUrl} target="_blank" rel="noreferrer">
+                                    Code
+                                  </a>
+                                ) : (
+                                  <span className="libraries-muted">—</span>
+                                )}
+                                {membersUrl ? (
+                                  <a
+                                    href={membersUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                  >
+                                    Members
+                                  </a>
+                                ) : null}
+                              </span>
+                            </li>
+                          )
+                        })}
                       </ul>
                     )}
                   </td>

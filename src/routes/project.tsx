@@ -66,6 +66,19 @@ const joinGitLabUrl = (baseUrl: string, path: string) => {
 const formatTimestamp = (value?: number | null) =>
   value ? new Date(value).toLocaleString() : '—'
 
+const mapAccessLevel = (level?: number | null) => {
+  switch (level) {
+    case 50:
+      return 'Owner'
+    case 40:
+      return 'Maintainer'
+    case 30:
+      return 'Developer'
+    default:
+      return '—'
+  }
+}
+
 function ProjectDetailPage() {
   const { detail, path } = Route.useLoaderData()
   const pathname = useRouterState({
@@ -178,6 +191,46 @@ function ProjectDetailPage() {
           </span>
         </div>
       </div>
+
+      {detail.members.length === 0 ? (
+        <p>No member data for this project.</p>
+      ) : (
+        <div>
+          <h2>Members</h2>
+          <div className="libraries-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Role</th>
+                </tr>
+              </thead>
+              <tbody>
+                {detail.members.map((member, index) => {
+                  const label = member.name ?? member.username ?? 'Unknown'
+                  const profileUrl = member.username
+                    ? joinGitLabUrl(baseUrl, member.username)
+                    : null
+                  return (
+                    <tr key={`${member.username ?? label}-${index}`}>
+                      <td>
+                        {profileUrl ? (
+                          <a href={profileUrl} target="_blank" rel="noreferrer">
+                            {label}
+                          </a>
+                        ) : (
+                          <span>{label}</span>
+                        )}
+                      </td>
+                      <td>{mapAccessLevel(member.accessLevel)}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {detail.dependencies.length === 0 ? (
         <p>No library data for this project.</p>

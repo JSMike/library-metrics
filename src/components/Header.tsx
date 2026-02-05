@@ -19,6 +19,10 @@ export default function Header() {
         </div>
 
         <div className="nav-item">
+          <Link to="/queries">Queries</Link>
+        </div>
+
+        <div className="nav-item">
           <Link to="/reports">Reports</Link>
         </div>
       </nav>

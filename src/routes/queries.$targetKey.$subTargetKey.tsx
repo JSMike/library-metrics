@@ -20,6 +20,12 @@ const getSegment = (value: string) => {
   return parts.length > 0 ? parts[parts.length - 1] : value
 }
 
+const joinGitLabUrl = (baseUrl: string, path: string) => {
+  const trimmed = baseUrl.replace(/\/+$/, '')
+  const cleanPath = path.replace(/^\/+/, '')
+  return `${trimmed}/${cleanPath}`
+}
+
 export const Route = createFileRoute('/queries/$targetKey/$subTargetKey')({
   loader: async ({ params }) => {
     const targetKey = sanitizeSegment(params.targetKey)
@@ -144,11 +150,23 @@ function SubTargetDetailPage() {
                           <th>Project</th>
                           <th>Matches</th>
                           <th>Files</th>
+                          <th>Links</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {query.projects.map((project) => (
-                          <tr key={project.projectId}>
+                        {query.projects.map((project) => {
+                          const projectPath = project.projectPath ?? ''
+                          const codeUrl = projectPath
+                            ? joinGitLabUrl(detail.gitlabBaseUrl, projectPath)
+                            : null
+                          const membersUrl = projectPath
+                            ? joinGitLabUrl(
+                                detail.gitlabBaseUrl,
+                                `${projectPath}/-/project_members`,
+                              )
+                            : null
+                          return (
+                            <tr key={project.projectId}>
                             <td>
                               <Link
                                 to="/project"
@@ -161,8 +179,25 @@ function SubTargetDetailPage() {
                             </td>
                             <td>{project.matchCount}</td>
                             <td>{project.fileCount}</td>
-                          </tr>
-                        ))}
+                            <td>
+                              <span className="queries-links">
+                                {codeUrl ? (
+                                  <a href={codeUrl} target="_blank" rel="noreferrer">
+                                    Code
+                                  </a>
+                                ) : (
+                                  <span className="queries-muted">—</span>
+                                )}
+                                {membersUrl ? (
+                                  <a href={membersUrl} target="_blank" rel="noreferrer">
+                                    Members
+                                  </a>
+                                ) : null}
+                              </span>
+                            </td>
+                            </tr>
+                          )
+                        })}
                       </tbody>
                     </table>
                   </div>

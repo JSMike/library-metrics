@@ -1480,6 +1480,7 @@ export const fetchUsageSubTargetDetail = async (
     targetTitle: getTargetTitle(targetKey),
     subTargetKey,
     subTargetTitle: getSubTargetTitle(targetKey, subTargetKey),
+    gitlabBaseUrl: getGitLabBaseUrl(),
     queries: Array.from(queryMap.values()),
   };
 };

@@ -1328,6 +1328,14 @@ const runSync = async () => {
     >();
     const usageSearchTargetsByProject = new Map<number, Set<string>>();
     const usageSearchFailures = new Set<string>();
+    const bypassTargetKeys = new Set(
+      usageTargets
+        .filter((target) => target.targetDependency === true)
+        .map((target) => target.targetKey),
+    );
+    const skippedNonZoektBypassQueries = new Set<string>();
+    const warnedBypassTargets = new Set<string>();
+    const warnedBypassQueries = new Set<string>();
     let usageSearchDisabled = false;
     const usageSearchableQueries = usageQueries
       .map((query) => ({
@@ -1341,6 +1349,18 @@ const runSync = async () => {
       );
 
     for (const query of usageQueries) {
+      if (
+        bypassTargetKeys.has(query.targetKey) &&
+        query.searchType !== "zoekt"
+      ) {
+        skippedNonZoektBypassQueries.add(query.queryKey);
+        if (!warnedBypassQueries.has(query.queryKey)) {
+          logWarn(
+            `[sync] usage query ${query.queryKey} skipped (targetDependency=true requires zoekt search).`,
+          );
+          warnedBypassQueries.add(query.queryKey);
+        }
+      }
       if (query.searchType !== "zoekt") {
         continue;
       }
@@ -1459,6 +1479,17 @@ const runSync = async () => {
       usageSearchMatches.clear();
       for (const query of usageSearchableQueries) {
         usageSearchFailures.add(query.queryKey);
+      }
+    }
+    if (!useZoektSearch && bypassTargetKeys.size > 0) {
+      for (const targetKey of bypassTargetKeys) {
+        if (warnedBypassTargets.has(targetKey)) {
+          continue;
+        }
+        logWarn(
+          `[sync] usage target ${targetKey} skipped (targetDependency=true requires zoekt search).`,
+        );
+        warnedBypassTargets.add(targetKey);
       }
     }
 
@@ -1871,40 +1902,53 @@ const runSync = async () => {
         }
 
         const projectPath = projectInfo.path_with_namespace?.toLowerCase() ?? "";
-        const enabledTargets = new Set(
-          usageTargets
-            .filter((target) => {
-              if (
-                projectDependencyNames.has(
-                  target.targetDependency.toLowerCase(),
-                )
-              ) {
-                return true;
-              }
-              if (!projectPath) {
-                return false;
-              }
-              return (
-                target.sourceProjects?.some(
-                  (path) => path.toLowerCase() === projectPath,
-                ) ?? false
-              );
-            })
-            .map((target) => target.targetKey),
-        );
-        if (useZoektSearch) {
-          const matchedTargets = usageSearchTargetsByProject.get(
-            projectInfo.id,
-          );
-          if (matchedTargets) {
-            for (const targetKey of matchedTargets) {
-              enabledTargets.add(targetKey);
-            }
+        const matchedTargets = useZoektSearch
+          ? usageSearchTargetsByProject.get(projectInfo.id) ?? null
+          : null;
+        const enabledTargets = new Set<string>();
+
+        for (const target of usageTargets) {
+          if (target.targetDependency === true) {
+            continue;
+          }
+          if (
+            projectDependencyNames.has(target.targetDependency.toLowerCase())
+          ) {
+            enabledTargets.add(target.targetKey);
+            continue;
+          }
+          if (!projectPath) {
+            continue;
+          }
+          if (
+            target.sourceProjects?.some(
+              (path) => path.toLowerCase() === projectPath,
+            )
+          ) {
+            enabledTargets.add(target.targetKey);
           }
         }
-        const queryList = usageQueries.filter((query) =>
-          enabledTargets.has(query.targetKey),
-        );
+
+        if (useZoektSearch && matchedTargets) {
+          for (const targetKey of matchedTargets) {
+            enabledTargets.add(targetKey);
+          }
+        }
+
+        const queryList = usageQueries.filter((query) => {
+          if (!enabledTargets.has(query.targetKey)) {
+            return false;
+          }
+          if (bypassTargetKeys.has(query.targetKey)) {
+            if (!useZoektSearch) {
+              return false;
+            }
+            if (skippedNonZoektBypassQueries.has(query.queryKey)) {
+              return false;
+            }
+          }
+          return true;
+        });
         if (queryList.length === 0) {
           debug(
             `[sync] ${projectLabel} usage scan skipped (no target dependencies found)`,

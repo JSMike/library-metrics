@@ -18,7 +18,7 @@ export type UsageSubTargetDefinition = {
 export type UsageTargetDefinition = {
   targetKey: string;
   targetTitle: string;
-  targetDependency: string;
+  targetDependency: string | true;
   sourceProjects?: string[];
   subTargets: UsageSubTargetDefinition[];
 };

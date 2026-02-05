@@ -68,4 +68,5 @@ Generated: 2026-02-05
 | [LM-38](./LM-38/issue.md) | Fix zoekt usage query search | 2026-02-04 |
 | [LM-39](./LM-39/issue.md) | Normalize links columns across views | 2026-02-05 |
 | [LM-41](./LM-41/issue.md) | Include package.json next to lockfiles | 2026-02-05 |
+| [LM-42](./LM-42/issue.md) | Allow usage targets to skip dependency filtering for zoekt | 2026-02-05 |
 | [LM-40](./LM-40/issue.md) | Show project members on project page | 2026-02-04 |

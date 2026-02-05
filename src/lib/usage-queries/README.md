@@ -12,6 +12,9 @@ export a set of `usageTargets` for a domain or product.
 ## Zoekt vs basic fallback
 
 - Set `searchType: "zoekt"` to enable zoekt search for a query.
+- Set `targetDependency: true` on a usage target to skip dependency filtering and
+  rely solely on zoekt search results to pick projects. Non-zoekt queries under
+  that target are skipped with a warning.
 - `searchQuery` is the exact string sent to the GitLab search API when zoekt is
   available. You can include `file:` or `-file:` filters directly if desired.
 - `regex` is optional. If it is omitted and zoekt is unavailable, the query is

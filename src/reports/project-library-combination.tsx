@@ -38,6 +38,7 @@ type ProjectLibraryMatrix = {
     projectName: string | null
     projectPath: string | null
     lastActivityAt: number | string | Date | null
+    appCode: string | null
     libraryVersions: Record<string, string[]>
   }>
 }
@@ -200,6 +201,7 @@ const ProjectLibraryCombinationReport = ({
                   </span>
                 </button>
               </th>
+              <th>App Code</th>
               {libraryConfigs.map((libraryConfig) => (
                 <th
                   key={libraryConfig.key}
@@ -250,6 +252,13 @@ const ProjectLibraryCombinationReport = ({
                       </Link>
                     ) : (
                       <span>{projectRow.projectName ?? 'Unknown'}</span>
+                    )}
+                  </td>
+                  <td>
+                    {projectRow.appCode ? (
+                      projectRow.appCode
+                    ) : (
+                      <span className="reports-muted">—</span>
                     )}
                   </td>
                   {libraryConfigs.map((libraryConfig) => {

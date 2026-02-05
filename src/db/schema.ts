@@ -71,6 +71,7 @@ export const project = sqliteTable(
       .references(() => gitlabGroup.id),
     pathWithNamespace: text("path_with_namespace").notNull(),
     name: text("name").notNull(),
+    appCode: text("app_code"),
   },
   (table) => ({
     gitlabIdIdx: uniqueIndex("project_gitlab_id_idx").on(table.gitlabId),

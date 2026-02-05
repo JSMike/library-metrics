@@ -103,6 +103,7 @@ function LibraryDetailPage() {
                 <th>Version</th>
                 <th>Usage</th>
                 <th>Projects</th>
+                <th>App Code</th>
                 <th>Links</th>
               </tr>
             </thead>
@@ -126,6 +127,23 @@ function LibraryDetailPage() {
                             >
                               {project.projectName}
                             </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </td>
+                  <td>
+                    {version.projects.length === 0 ? (
+                      <span className="libraries-muted">—</span>
+                    ) : (
+                      <ul className="libraries-projects">
+                        {version.projects.map((project) => (
+                          <li key={project.projectId}>
+                            {project.appCode ? (
+                              project.appCode
+                            ) : (
+                              <span className="libraries-muted">—</span>
+                            )}
                           </li>
                         ))}
                       </ul>

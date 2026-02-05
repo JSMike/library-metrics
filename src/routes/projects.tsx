@@ -165,6 +165,7 @@ function ProjectsPage() {
             <thead>
               <tr>
                 <th>Project</th>
+                <th>App Code</th>
                 <th>Last activity</th>
                 <th>Links</th>
               </tr>
@@ -190,6 +191,13 @@ function ProjectsPage() {
                         </Link>
                       ) : (
                         <span>{row.projectName ?? 'Unknown'}</span>
+                      )}
+                    </td>
+                    <td>
+                      {row.appCode ? (
+                        row.appCode
+                      ) : (
+                        <span className="libraries-muted">—</span>
                       )}
                     </td>
                     <td>{formatTimestamp(row.lastActivityAt)}</td>

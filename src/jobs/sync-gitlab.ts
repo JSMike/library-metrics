@@ -114,6 +114,8 @@ const lockfileKindMap: Record<string, (typeof fileKinds)[number]> = {
   "bun.lock": "bun_lock",
   "bun.lockb": "bun_lockb",
 };
+const APP_CODE_OWNER_LEVEL = 50;
+const APP_CODE_PATTERN = /^a-([A-Za-z0-9]+)-GIT-/;
 
 const decodeBase64 = (value: string) =>
   Buffer.from(value, "base64").toString("utf8");
@@ -124,6 +126,40 @@ const parseJson = (raw: string): Record<string, unknown> | null => {
   } catch {
     return null;
   }
+};
+
+const parseAppCodeFromLinkName = (name: string) => {
+  const trimmed = name.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const match = trimmed.match(APP_CODE_PATTERN);
+  if (!match) {
+    return trimmed;
+  }
+  const rawCode = match[1];
+  const stripped = rawCode.replace(/xx$/, "");
+  const candidate = stripped || rawCode;
+  const normalized = candidate.trim();
+  return normalized.length > 0 ? normalized.toUpperCase() : trimmed;
+};
+
+const resolveAppCodeFromLinks = (
+  links: Array<{ name: string; access_level: number }> | null,
+) => {
+  if (!Array.isArray(links)) {
+    return null;
+  }
+  const ownerLink = links.find(
+    (link) =>
+      link.access_level === APP_CODE_OWNER_LEVEL &&
+      typeof link.name === "string" &&
+      link.name.trim().length > 0,
+  );
+  if (!ownerLink) {
+    return null;
+  }
+  return parseAppCodeFromLinkName(ownerLink.name);
 };
 
 const getDirname = (path: string) => {
@@ -650,6 +686,7 @@ const ensureProject = async (
   groupId: number,
   projectInfo: GitLabProjectResponse,
   projectMap: Map<number, number>,
+  appCode: string | null,
 ) => {
   const existingId = projectMap.get(projectInfo.id);
   if (existingId) {
@@ -659,6 +696,7 @@ const ensureProject = async (
         pathWithNamespace: projectInfo.path_with_namespace,
         name: projectInfo.name,
         groupId,
+        appCode,
       })
       .where(eq(project.id, existingId));
     return existingId;
@@ -669,6 +707,7 @@ const ensureProject = async (
     groupId,
     pathWithNamespace: projectInfo.path_with_namespace,
     name: projectInfo.name,
+    appCode,
   });
 
   const row = sqlite.query("select last_insert_rowid() as id").get() as {
@@ -1549,6 +1588,56 @@ const runSync = async () => {
       }
     };
 
+    const appCodeByGroupRowId = new Map<number, string | null>();
+    const loadGroupRow = async (groupRowId: number) => {
+      const rows = await db
+        .select({
+          id: gitlabGroup.id,
+          gitlabId: gitlabGroup.gitlabId,
+          parentGroupId: gitlabGroup.parentGroupId,
+          samlGroupLinksJson: gitlabGroup.samlGroupLinksJson,
+        })
+        .from(gitlabGroup)
+        .where(eq(gitlabGroup.id, groupRowId))
+        .limit(1);
+      return rows[0] ?? null;
+    };
+    const resolveAppCodeForGroup = async (groupRowId: number | null) => {
+      if (!groupRowId) {
+        return null;
+      }
+      if (appCodeByGroupRowId.has(groupRowId)) {
+        return appCodeByGroupRowId.get(groupRowId) ?? null;
+      }
+      const visited = new Set<number>();
+      let currentGroupId: number | null = groupRowId;
+      let resolved: string | null = null;
+      while (currentGroupId && !visited.has(currentGroupId)) {
+        visited.add(currentGroupId);
+        let groupRow = await loadGroupRow(currentGroupId);
+        if (!groupRow) {
+          break;
+        }
+        if (!groupRow.samlGroupLinksJson) {
+          await ensureGroupSamlLinks(groupRow.gitlabId, groupRow.id);
+          groupRow = await loadGroupRow(currentGroupId);
+          if (!groupRow) {
+            break;
+          }
+        }
+        const appCode = resolveAppCodeFromLinks(
+          groupRow.samlGroupLinksJson ?? null,
+        );
+        if (appCode) {
+          resolved = appCode;
+          break;
+        }
+        currentGroupId = groupRow.parentGroupId ?? null;
+      }
+      appCodeByGroupRowId.set(groupRowId, resolved);
+      return resolved;
+    };
+
     const syncProjectMembers = async (
       projectId: number,
       gitlabProjectId: number,
@@ -1623,12 +1712,14 @@ const runSync = async () => {
           projectStatus = "skipped";
           continue;
         }
+        await ensureGroupSamlLinks(projectGitlabGroupId, projectGroupId);
+        const appCode = await resolveAppCodeForGroup(projectGroupId);
         const projectId = await ensureProject(
           projectGroupId,
           projectInfo,
           projectMap,
+          appCode,
         );
-        await ensureGroupSamlLinks(projectGitlabGroupId, projectGroupId);
         await syncProjectMembers(projectId, projectInfo.id, projectLabel);
         const latestCommit = await fetchLatestCommit(
           config,

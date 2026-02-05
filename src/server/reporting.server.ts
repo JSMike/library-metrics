@@ -427,6 +427,7 @@ export const fetchProjectSummary = async () => {
       projectName: string;
       projectPath: string;
       lastActivityAt: number | null;
+      appCode: string | null;
     }> };
   }
 
@@ -435,6 +436,7 @@ export const fetchProjectSummary = async () => {
       projectId: project.id,
       projectName: project.name,
       projectPath: project.pathWithNamespace,
+      appCode: project.appCode,
       lastActivityAt: projectSnapshot.lastActivityAt,
     })
     .from(projectSnapshot)
@@ -452,6 +454,7 @@ export const fetchProjectSummary = async () => {
       project.id,
       project.name,
       project.pathWithNamespace,
+      project.appCode,
       projectSnapshot.lastActivityAt,
     )
     .orderBy(asc(project.name), asc(project.pathWithNamespace));
@@ -472,6 +475,7 @@ export const fetchProjectLibraryMatrix = async (options: {
       projectName: string | null;
       projectPath: string | null;
       lastActivityAt: number | null;
+      appCode: string | null;
       libraryVersions: Record<string, string[]>;
     }> };
   }
@@ -481,6 +485,7 @@ export const fetchProjectLibraryMatrix = async (options: {
       projectId: project.id,
       projectName: project.name,
       projectPath: project.pathWithNamespace,
+      appCode: project.appCode,
       lastActivityAt: projectSnapshot.lastActivityAt,
       dependencyName: dependency.name,
       versionResolved: lockDependencySnapshot.versionResolved,
@@ -504,6 +509,7 @@ export const fetchProjectLibraryMatrix = async (options: {
       project.id,
       project.name,
       project.pathWithNamespace,
+      project.appCode,
       projectSnapshot.lastActivityAt,
       dependency.name,
       lockDependencySnapshot.versionResolved,
@@ -520,6 +526,7 @@ export const fetchProjectLibraryMatrix = async (options: {
     projectName: string | null;
     projectPath: string | null;
     lastActivityAt: number | null;
+    appCode: string | null;
     libraryVersions: Map<string, Set<string>>;
   }>();
 
@@ -529,6 +536,7 @@ export const fetchProjectLibraryMatrix = async (options: {
       projectName: row.projectName ?? null,
       projectPath: row.projectPath ?? null,
       lastActivityAt: row.lastActivityAt ?? null,
+      appCode: row.appCode ?? null,
       libraryVersions: new Map<string, Set<string>>(),
     };
 
@@ -561,6 +569,7 @@ export const fetchProjectLibraryMatrix = async (options: {
       projectName: entry.projectName,
       projectPath: entry.projectPath,
       lastActivityAt: entry.lastActivityAt,
+      appCode: entry.appCode,
       libraryVersions,
     };
   });
@@ -602,6 +611,7 @@ export const fetchLibraryDetail = async (options: {
       projectId: project.id,
       projectName: project.name,
       projectPath: project.pathWithNamespace,
+      appCode: project.appCode,
     })
     .from(lockDependencySnapshot)
     .leftJoin(project, eq(lockDependencySnapshot.projectId, project.id))
@@ -623,6 +633,7 @@ export const fetchLibraryDetail = async (options: {
       project.id,
       project.name,
       project.pathWithNamespace,
+      project.appCode,
     );
 
   const versionMap = new Map<
@@ -633,6 +644,7 @@ export const fetchLibraryDetail = async (options: {
         projectId: number;
         projectName: string;
         projectPath: string;
+        appCode: string | null;
       }>;
     }
   >();
@@ -645,6 +657,7 @@ export const fetchLibraryDetail = async (options: {
           projectId: row.projectId,
           projectName: row.projectName ?? "Unknown",
           projectPath: row.projectPath ?? "",
+          appCode: row.appCode ?? null,
         }
       : null;
 
@@ -1372,6 +1385,7 @@ export const fetchUsageSubTargetDetail = async (
       projectId: project.id,
       projectName: project.name,
       projectPath: project.pathWithNamespace,
+      appCode: project.appCode,
       matchCount: sql<number>`sum(${usageResult.matchCount})`,
     })
     .from(usageResult)
@@ -1385,7 +1399,13 @@ export const fetchUsageSubTargetDetail = async (
       ),
     )
     .where(whereClause)
-    .groupBy(usageResult.queryKey, project.id, project.name, project.pathWithNamespace)
+    .groupBy(
+      usageResult.queryKey,
+      project.id,
+      project.name,
+      project.pathWithNamespace,
+      project.appCode,
+    )
     .orderBy(asc(usageResult.queryKey), asc(project.name));
 
   const fileRows = await db
@@ -1433,6 +1453,7 @@ export const fetchUsageSubTargetDetail = async (
         projectId: number;
         projectName: string;
         projectPath: string;
+        appCode: string | null;
         matchCount: number;
         fileCount: number;
       }>;
@@ -1459,6 +1480,7 @@ export const fetchUsageSubTargetDetail = async (
         projectId: row.projectId,
         projectName: row.projectName ?? "Unknown",
         projectPath: row.projectPath ?? "",
+        appCode: row.appCode ?? null,
         matchCount: row.matchCount,
         fileCount,
       });

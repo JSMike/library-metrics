@@ -148,6 +148,7 @@ function SubTargetDetailPage() {
                       <thead>
                         <tr>
                           <th>Project</th>
+                          <th>App Code</th>
                           <th>Matches</th>
                           <th>Files</th>
                           <th>Links</th>
@@ -176,6 +177,13 @@ function SubTargetDetailPage() {
                               >
                                 {project.projectName}
                               </Link>
+                            </td>
+                            <td>
+                              {project.appCode ? (
+                                project.appCode
+                              ) : (
+                                <span className="queries-muted">—</span>
+                              )}
                             </td>
                             <td>{project.matchCount}</td>
                             <td>{project.fileCount}</td>

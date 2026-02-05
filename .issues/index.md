@@ -35,6 +35,7 @@ Generated: 2026-02-05
 
 | ID | Title | Complexity | PR |
 | --- | --- | --- | --- |
+| [LM-43](./LM-43/issue.md) | Add App Code column derived from SAML group links | medium | |
 | [LM-29](./LM-29/issue.md) | Seed GitLab sync via file search to avoid node_modules noise | medium | |
 | [LM-30](./LM-30/issue.md) | Search-seeded usage queries with project/file/total counts | medium | |
 
@@ -69,5 +70,4 @@ Generated: 2026-02-05
 | [LM-39](./LM-39/issue.md) | Normalize links columns across views | 2026-02-05 |
 | [LM-41](./LM-41/issue.md) | Include package.json next to lockfiles | 2026-02-05 |
 | [LM-42](./LM-42/issue.md) | Allow usage targets to skip dependency filtering for zoekt | 2026-02-05 |
-| [LM-43](./LM-43/issue.md) | Add App Code column derived from SAML group links | 2026-02-05 |
 | [LM-40](./LM-40/issue.md) | Show project members on project page | 2026-02-04 |

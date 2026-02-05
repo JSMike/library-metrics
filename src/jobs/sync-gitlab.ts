@@ -115,7 +115,7 @@ const lockfileKindMap: Record<string, (typeof fileKinds)[number]> = {
   "bun.lockb": "bun_lockb",
 };
 const APP_CODE_OWNER_LEVEL = 50;
-const APP_CODE_PATTERN = /^a-([A-Za-z0-9]+)-GIT-/;
+const APP_CODE_PATTERN = /^a-([A-Za-z0-9]+)xx-/;
 
 const decodeBase64 = (value: string) =>
   Buffer.from(value, "base64").toString("utf8");
@@ -138,8 +138,7 @@ const parseAppCodeFromLinkName = (name: string) => {
     return trimmed;
   }
   const rawCode = match[1];
-  const stripped = rawCode.replace(/xx$/, "");
-  const candidate = stripped || rawCode;
+  const candidate = rawCode;
   const normalized = candidate.trim();
   return normalized.length > 0 ? normalized.toUpperCase() : trimmed;
 };

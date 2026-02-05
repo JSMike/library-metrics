@@ -1859,10 +1859,10 @@ const runSync = async () => {
             `[sync] ${projectLabel} usage scan skipped (no target dependencies found)`,
           );
         }
-          for (const query of queryList) {
-            const matcher = toRegex(query);
-            if (!matcher) {
-              if (!useZoektSearch) {
+        for (const query of queryList) {
+          const matcher = toRegex(query);
+          if (!matcher) {
+            if (!useZoektSearch) {
               debug(
                 `[sync] ${projectLabel} skipping regex scan for ${query.queryKey} (no regex fallback configured)`,
               );
@@ -1870,168 +1870,166 @@ const runSync = async () => {
             continue;
           }
           queryMatchers.set(query.queryKey, matcher);
-            const extensions = query.extensions ?? [];
-            if (extensions.length === 0) {
-              logWarn(
-                `[sync] ${projectLabel} skipping regex scan for ${query.queryKey} (no extensions configured)`,
-              );
-              continue;
-            }
-            for (const extension of extensions) {
-              const ext = extension.toLowerCase();
-              const list = queriesByExtension.get(ext) ?? [];
-              list.push(query);
+          const extensions = query.extensions ?? [];
+          if (extensions.length === 0) {
+            logWarn(
+              `[sync] ${projectLabel} skipping regex scan for ${query.queryKey} (no extensions configured)`,
+            );
+            continue;
+          }
+          for (const extension of extensions) {
+            const ext = extension.toLowerCase();
+            const list = queriesByExtension.get(ext) ?? [];
+            list.push(query);
             queriesByExtension.set(ext, list);
           }
         }
 
-        if (queriesByExtension.size > 0) {
-          if (useZoektSearch) {
-            let searchFiles = 0;
-            for (const query of queryList) {
-              if (usageSearchFailures.has(query.queryKey)) {
+        if (useZoektSearch) {
+          let searchFiles = 0;
+          for (const query of queryList) {
+            if (usageSearchFailures.has(query.queryKey)) {
+              continue;
+            }
+            const fileMap =
+              usageSearchMatches.get(query.queryKey)?.get(projectInfo.id) ??
+              null;
+            if (!fileMap || fileMap.size === 0) {
+              continue;
+            }
+            for (const [filePath, matchCount] of fileMap.entries()) {
+              if (!matchCount) {
                 continue;
               }
-              const fileMap =
-                usageSearchMatches.get(query.queryKey)?.get(projectInfo.id) ??
-                null;
-              if (!fileMap || fileMap.size === 0) {
-                continue;
-              }
-              for (const [filePath, matchCount] of fileMap.entries()) {
-                if (!matchCount) {
-                  continue;
-                }
-                searchFiles += 1;
-                const existing = usageCounts.get(query.queryKey);
-                if (existing) {
-                  existing.count += matchCount;
-                } else {
-                  usageCounts.set(query.queryKey, {
-                    queryKey: query.queryKey,
-                    targetKey: query.targetKey,
-                    subTargetKey: query.subTargetKey,
-                    count: matchCount,
-                  });
-                }
-                fileUsageRows.push({
-                  projectId,
-                  syncId: runId,
+              searchFiles += 1;
+              const existing = usageCounts.get(query.queryKey);
+              if (existing) {
+                existing.count += matchCount;
+              } else {
+                usageCounts.set(query.queryKey, {
+                  queryKey: query.queryKey,
                   targetKey: query.targetKey,
                   subTargetKey: query.subTargetKey,
-                  queryKey: query.queryKey,
-                  filePath,
-                  matchCount,
-                  scannedAt: new Date(),
+                  count: matchCount,
                 });
               }
-            }
-            debug(
-              `[sync] ${projectLabel} usage search matches: ${searchFiles} files`,
-            );
-          } else {
-            if (treeEntries.length === 0) {
-              const treeStart = Date.now();
-              debug(`[sync] ${projectLabel} fetching repository tree`);
-              treeEntries = await fetchRepositoryTree(
-                config,
-                throttler,
-                rateLimiter,
-                projectInfo.id,
-                projectInfo.default_branch,
-              );
-              debug(
-                `[sync] ${projectLabel} repository tree fetched (${treeEntries.length} entries, ${((Date.now() - treeStart) / 1000).toFixed(1)}s)`,
-              );
-            }
-
-            const candidateFiles = treeEntries
-              .filter(
-                (entry) =>
-                  entry.type === "blob" &&
-                  !isNodeModulesPath(entry.path) &&
-                  queriesByExtension.has(getExtension(entry.path)),
-              )
-              .map((entry) => entry.path);
-            debug(
-              `[sync] ${projectLabel} usage scan candidates: ${candidateFiles.length}`,
-            );
-
-            let scannedFiles = 0;
-            for (const filePath of candidateFiles) {
-              const extension = getExtension(filePath);
-              const queries = queriesByExtension.get(extension);
-              if (!queries || queries.length === 0) {
-                continue;
-              }
-
-              const file = await fetchFile(
-                config,
-                throttler,
-                rateLimiter,
-                projectInfo.id,
-                projectInfo.default_branch,
+              fileUsageRows.push({
+                projectId,
+                syncId: runId,
+                targetKey: query.targetKey,
+                subTargetKey: query.subTargetKey,
+                queryKey: query.queryKey,
                 filePath,
-              );
-              scannedFiles += 1;
-              if (debugEnabled && scannedFiles % scanLogInterval === 0) {
-                debug(
-                  `[sync] ${projectLabel} scanned ${scannedFiles}/${candidateFiles.length} files`,
-                );
-              }
-              if (!file.raw) {
-                continue;
-              }
-
-              for (const query of queries) {
-                const regex = queryMatchers.get(query.queryKey);
-                if (!regex) {
-                  continue;
-                }
-                const matchCount = countMatches(regex, file.raw);
-                if (!matchCount) {
-                  continue;
-                }
-                const existing = usageCounts.get(query.queryKey);
-                if (existing) {
-                  existing.count += matchCount;
-                } else {
-                  usageCounts.set(query.queryKey, {
-                    queryKey: query.queryKey,
-                    targetKey: query.targetKey,
-                    subTargetKey: query.subTargetKey,
-                    count: matchCount,
-                  });
-                }
-                fileUsageRows.push({
-                  projectId,
-                  syncId: runId,
-                  targetKey: query.targetKey,
-                  subTargetKey: query.subTargetKey,
-                  queryKey: query.queryKey,
-                  filePath,
-                  matchCount,
-                  scannedAt: new Date(),
-                });
-              }
+                matchCount,
+                scannedAt: new Date(),
+              });
             }
           }
-
-          if (fileUsageRows.length > 0) {
-            await db.insert(usageFileResult).values(fileUsageRows);
+          debug(
+            `[sync] ${projectLabel} usage search matches: ${searchFiles} files`,
+          );
+        } else if (queriesByExtension.size > 0) {
+          if (treeEntries.length === 0) {
+            const treeStart = Date.now();
+            debug(`[sync] ${projectLabel} fetching repository tree`);
+            treeEntries = await fetchRepositoryTree(
+              config,
+              throttler,
+              rateLimiter,
+              projectInfo.id,
+              projectInfo.default_branch,
+            );
+            debug(
+              `[sync] ${projectLabel} repository tree fetched (${treeEntries.length} entries, ${((Date.now() - treeStart) / 1000).toFixed(1)}s)`,
+            );
           }
 
-          for (const usage of usageCounts.values()) {
-            await db.insert(usageResult).values({
-              projectId,
-              syncId: runId,
-              targetKey: usage.targetKey,
-              subTargetKey: usage.subTargetKey,
-              queryKey: usage.queryKey,
-              matchCount: usage.count,
-              scannedAt: new Date(),
-            });
+          const candidateFiles = treeEntries
+            .filter(
+              (entry) =>
+                entry.type === "blob" &&
+                !isNodeModulesPath(entry.path) &&
+                queriesByExtension.has(getExtension(entry.path)),
+            )
+            .map((entry) => entry.path);
+          debug(
+            `[sync] ${projectLabel} usage scan candidates: ${candidateFiles.length}`,
+          );
+
+          let scannedFiles = 0;
+          for (const filePath of candidateFiles) {
+            const extension = getExtension(filePath);
+            const queries = queriesByExtension.get(extension);
+            if (!queries || queries.length === 0) {
+              continue;
+            }
+
+            const file = await fetchFile(
+              config,
+              throttler,
+              rateLimiter,
+              projectInfo.id,
+              projectInfo.default_branch,
+              filePath,
+            );
+            scannedFiles += 1;
+            if (debugEnabled && scannedFiles % scanLogInterval === 0) {
+              debug(
+                `[sync] ${projectLabel} scanned ${scannedFiles}/${candidateFiles.length} files`,
+              );
+            }
+            if (!file.raw) {
+              continue;
+            }
+
+            for (const query of queries) {
+              const regex = queryMatchers.get(query.queryKey);
+              if (!regex) {
+                continue;
+              }
+              const matchCount = countMatches(regex, file.raw);
+              if (!matchCount) {
+                continue;
+              }
+              const existing = usageCounts.get(query.queryKey);
+              if (existing) {
+                existing.count += matchCount;
+              } else {
+                usageCounts.set(query.queryKey, {
+                  queryKey: query.queryKey,
+                  targetKey: query.targetKey,
+                  subTargetKey: query.subTargetKey,
+                  count: matchCount,
+                });
+              }
+              fileUsageRows.push({
+                projectId,
+                syncId: runId,
+                targetKey: query.targetKey,
+                subTargetKey: query.subTargetKey,
+                queryKey: query.queryKey,
+                filePath,
+                matchCount,
+                scannedAt: new Date(),
+              });
+            }
           }
+        }
+
+        if (fileUsageRows.length > 0) {
+          await db.insert(usageFileResult).values(fileUsageRows);
+        }
+
+        for (const usage of usageCounts.values()) {
+          await db.insert(usageResult).values({
+            projectId,
+            syncId: runId,
+            targetKey: usage.targetKey,
+            subTargetKey: usage.subTargetKey,
+            queryKey: usage.queryKey,
+            matchCount: usage.count,
+            scannedAt: new Date(),
+          });
         }
         debug(
           `[sync] ${projectLabel} sync complete in ${((Date.now() - projectStartedAt) / 1000).toFixed(1)}s`,

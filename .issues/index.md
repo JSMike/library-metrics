@@ -1,6 +1,6 @@
 # Issue Index
 
-Generated: 2026-02-05
+Generated: 2026-02-06
 
 ## By Status
 
@@ -71,3 +71,4 @@ Generated: 2026-02-05
 | [LM-41](./LM-41/issue.md) | Include package.json next to lockfiles | 2026-02-05 |
 | [LM-42](./LM-42/issue.md) | Allow usage targets to skip dependency filtering for zoekt | 2026-02-05 |
 | [LM-40](./LM-40/issue.md) | Show project members on project page | 2026-02-04 |
+| [LM-44](./LM-44/issue.md) | Create AI workflow starter repo | 2026-02-06 |
